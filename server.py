@@ -1,77 +1,63 @@
-import selectors
-import socket
-import sys
-import types
+# Libraries
+import selectors, socket, sys, types
 
-sel = selectors.DefaultSelector()
+# Constants
+SUCCESS = 0
+ERROR = 1
 
+# Variables
+selector = selectors.DefaultSelector()
 
-def accept_wrapper(sock):
-    conn, addr = sock.accept()  # Should be ready to read
-    print(f"Accepted connection from {addr}")
-    conn.setblocking(False)
-    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"")
+def accept_wrapper(socket):
+    connection, address = socket.accept()
+    print("Accepted connection from", address)
+    connection.setblocking(False)
+    data = types.SimpleNamespace(address=address, inb=b"", outb=b"")
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
-    sel.register(conn, events, data=data)
-
+    selector.register(connection, events, data=data)
 
 def service_connection(key, mask):
-    sock = key.fileobj
+    socket = key.fileobj
     data = key.data
+    # If read operation
     if mask & selectors.EVENT_READ:
-        recv_data = sock.recv(1024)  # Should be ready to read
-        if recv_data:
-            data.outb += recv_data
+        recieved_data = socket.recv(1024)
+        if recieved_data:
+            data.outb += recieved_data
         else:
             print(f"Closing connection to {data.addr}")
-            sel.unregister(sock)
-            sock.close()
+            selector.unregister(socket)
+            socket.close()
+    # If write operation
     if mask & selectors.EVENT_WRITE:
         if data.outb:
             print(f"Echoing {data.outb!r} to {data.addr}")
-            sent = sock.send(data.outb)  # Should be ready to write
+            sent = socket.send(data.outb)
             data.outb = data.outb[sent:]
 
-
-
-# Checks usage of the script
-if len(sys.argv) != 3:
-    print(f"Usage: {sys.argv[0]} <host> <port>")
-    sys.exit(1)
-
-# Sets the host and port
-host, port = sys.argv[1], int(sys.argv[2])
-
-# Creates listening socket using IPv4 and TCP
-lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# Binds the socket to the host and port
-lsock.bind((host, port))
-# Listens for connections
-lsock.listen()
-print(f"Listening on {(host, port)}")
-# Sets the socket to non-blocking, preventing the server from locking up on operations
-lsock.setblocking(False)
-# Registers the socket to the selector to monitor for read events
-sel.register(lsock, selectors.EVENT_READ, data=None)
-
-try:
-    while True:
-        # The select gets the keys (what the object being monitored is)
-        # and the mask (what the object is doing)
-        # from the registered objects in the selector that are I/O ready
-        # Single-threaded manner and handles sockets in the order that they are I/O ready
-        # Select waits for any events on the registered sockets
-        # The listening socket is registered which is how the selector can see new connections
-        events = sel.select(timeout=None)
-        # For the keys and masks within the
-        for key, mask in events:
-            if key.data is None:
-                # Socket object is passed to the accept_wrapper function
-                accept_wrapper(key.fileobj)
-            else:
-                # Handles non-new connections (connections already registered)
-                service_connection(key, mask)
-except KeyboardInterrupt:
-    print("Caught keyboard interrupt, exiting")
-finally:
-    sel.close()
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <host> <port>")
+        sys.exit(ERROR)
+    host, port = sys.argv[1], int(sys.argv[2])
+    listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listening_socket.bind((host, port))
+    listening_socket.listen()
+    print("Listening on", (host, port))
+    listening_socket.setblocking(False)
+    selector.register(listening_socket, selectors.EVENT_READ, data=None)
+    try:
+        while True:
+            events = selector.select(timeout=None)
+            for key, mask in events:
+                if key.data is None:
+                    accept_wrapper(key.fileobj)
+                else:
+                    service_connection(key, mask)
+    except KeyboardInterrupt:
+        print("Caught keyboard interrupt, exiting")
+    except Exception as e:
+        print(f"Caught exception: {e}")
+    finally:
+        selector.close()
+        sys.exit(SUCCESS)
