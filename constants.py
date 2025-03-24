@@ -1,0 +1,4 @@
+# Constants
+SUCCESS = 0
+ERROR = 1
+CONNECTION_ACCEPT_ERROR = 2
