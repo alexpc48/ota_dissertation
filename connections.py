@@ -1,6 +1,7 @@
 # Libraries
 import socket
 import selectors
+import select
 import types
 import typing
 import errno
@@ -49,15 +50,20 @@ def initiate_connection(host: str, port: int, selector: selectors.SelectSelector
        
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
-        result = connection_socket.connect_ex((host, port)) # Connect to the server address
-        
-        if result == errno.EINPROGRESS:
-            print(f"An error occurred while connecting to the server: {result}")
-            
+        connection_socket.connect_ex((host, port)) # Connect to the server address
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"") # Server address
         selector.register(connection_socket, events, data=data)
+
+        readable, writeable, _ = select.select([connection_socket], [connection_socket], [], 5) # Waits 5 seconds for the connection to be established
+
+        if not readable or not writeable:
+            print(f"Connection to {host}:{port} failed.")
+            if connection_socket in locals():
+                connection_socket.close()
+        
+            return None, CONNECTION_INITIATE_ERROR
 
         return connection_socket, SUCCESS
     
@@ -68,7 +74,7 @@ def initiate_connection(host: str, port: int, selector: selectors.SelectSelector
         if connection_socket in locals():
             connection_socket.close()
         
-        return CONNECTION_INITIATE_ERROR
+        return None, CONNECTION_INITIATE_ERROR
 
 # Function closes the connection to the server
 def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:

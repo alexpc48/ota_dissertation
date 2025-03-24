@@ -1,4 +1,2 @@
-v1.02
-Split up the functons into libraries
-
-Client errors if the server doesnt exist
+v1.03
+Finer refining of the client not being able to reach the server

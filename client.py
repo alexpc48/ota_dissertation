@@ -16,16 +16,19 @@ if __name__=='__main__':
     try:
         while True:
             # Initiate a connection to the server
-            connection_socket, _ = initiate_connection(server_host, server_port, selector)
+            connection_socket, return_value = initiate_connection(server_host, server_port, selector)
             
-            time.sleep(5)
+            if return_value == CONNECTION_INITIATE_ERROR:
+                continue
+
+            time.sleep(2)
 
             _ = close_connection(connection_socket, selector)
 
-            time.sleep(5)
+            time.sleep(2)
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
         selector.close()
-        connection_socket.close()
+        # connection_socket.close()
         print("Connection closed.")
