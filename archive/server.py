@@ -1,30 +1,3 @@
-'''
-Server requirements
-
-TODO:
- - Integrates database access
- - Check database for updates to firmware
- - Can create connection with client
- - Allow only registered clients to create connections
- - If connection to client fails when a new update is trying to be installed, try again within random interval of 1-5 minutes
- - Random interval prevents connection lockup between server and client requesting connections at the same time
- - 1-5 minutes simulates hours/days
- - Change status
- - Prevent connected client from making a new connection if the server is already servicing it
- - I.e., if server is connected to client, don’t let the client open a new connection to the server
- - Accept status codes from the client
- - Store status codes of clients
- - Keep connection alive if client allows install states
- - Ping client to check it is alive and if not, shut connection down
-
- DONE:
- - Has a listening socket that allows clients to connect
- - Creates new connections using TCP when client requests one
-
-
-'''
-
-
 # Libraries
 import sys
 import socket
@@ -32,18 +5,16 @@ import selectors
 import types
 from constants import *
 
-# Functions
-# Funtion accepts new connections from clients and registers them with the selector
 def accept_new_connection(socket: socket.socket) -> int:
     try:
         # Get socket information
-        connection_socket, client_address = socket.accept()
-        print(f"Accepted connection from {client_address}")
+        connection_socket, address = socket.accept()
+        print(f"Accepted connection from {address}")
 
         connection_socket.setblocking(False)
 
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=client_address, inb=b"", outb=b"") # Fast way to create struct-like objects
+        data = types.SimpleNamespace(address=address, inb=b"", outb=b"") # Fast way to create struct-like objects
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         selector.register(connection_socket, events, data=data)
 
@@ -58,16 +29,18 @@ def accept_new_connection(socket: socket.socket) -> int:
 
         return CONNECTION_ACCEPT_ERROR
 
-# Function services current registered connections with their corresponding events
-def service_current_connection(key: selectors.SelectorKey, mask: int) -> int:
-    connection_socket = key.fileobj
-    
-    if mask & selectors.EVENT_READ:
-        if not connection_socket.recv(1024):
-            print(f"Closing connection to {key.data.address}")
-            selector.unregister(connection_socket)
-            connection_socket.close()
 
+def service_current_connection(key: selectors.SelectorKey, mask: int) -> int:
+    try:
+        socket = key.fileobj
+        
+        if mask & selectors.EVENT_READ: # Uses bitwise AND to check mask holds the value of EVENT_READ
+            received_data = socket.recv(1024) # Recieve 1024 bytes of data
+            if received_data:
+                print(f"Received {received_data!r} from {key.data.address}")
+                key.data.outb += received_data
+                
+    
 
 # Main program
 if __name__=='__main__':
