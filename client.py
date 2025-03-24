@@ -53,9 +53,12 @@ if __name__=='__main__':
     # Assign the server IP address and port
     server_host, server_port = sys.argv[1], int(sys.argv[2])
     
-    # Initiate a connection to the server
-    connection_socket, _ = initiate_connection(server_host, server_port)
-    
-    time.sleep(5)
+    while True:
+        # Initiate a connection to the server
+        connection_socket, _ = initiate_connection(server_host, server_port)
+        
+        time.sleep(5)
 
-    close_connection(connection_socket)
+        close_connection(connection_socket)
+
+        time.sleep(5)

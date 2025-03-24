@@ -1,0 +1,7 @@
+v1.01
+Server creates a listening socket
+Client connects to the socket and creates a connection through a random port available
+Client cuts connection with the server
+The server cuts the connection to the client
+
+Currently these actions loop infinitly
