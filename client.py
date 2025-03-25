@@ -24,6 +24,17 @@ if __name__=='__main__':
                 continue
 
             time.sleep(2) # Debugging purposes
+            events = selector.select(timeout=1)
+            if events:
+                for key, mask in events:
+                    print(type(key))
+                    print(type(mask))
+                    print(mask)
+                    service_connection(key, mask)
+                connection_socket.sendall(b"Hello, server!")
+            print("Data sent to server.")
+            
+            time.sleep(2) # Debugging purposes
 
             _ = close_connection(connection_socket, selector)
 

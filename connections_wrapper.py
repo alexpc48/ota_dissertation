@@ -85,6 +85,10 @@ def service_current_connection(key: selectors.SelectorKey, mask: int, selector: 
 
         # Service read events
         if mask & selectors.EVENT_READ:
+            if connection_socket.recv(1024):
+                print (f"Received data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                print (f"Data: {connection_socket.recv(1024)}")
+                return close_connection(connection_socket, selector)
             # If there is no data to read, close the connection
             if not connection_socket.recv(1024):
                 return close_connection(connection_socket, selector)
