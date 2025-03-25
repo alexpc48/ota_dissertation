@@ -1,7 +1,6 @@
 # Libraries
 import socket
 import selectors
-import select
 import types
 import typing
 import errno
@@ -26,22 +25,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     
     except Exception as e:
         print(f"An error occurred: {e}")
-
-        # Close the connection socket if it was created
-        if connection_socket in locals():
-            connection_socket.close()
-
         return CONNECTION_ACCEPT_ERROR
-
-# Function services current registered connections with their corresponding events
-def service_current_connection(key: selectors.SelectorKey, mask: int, selector: selectors.SelectSelector) -> int:
-    connection_socket = key.fileobj
-
-    if mask & selectors.EVENT_READ:
-        if not connection_socket.recv(1024):
-            print(f"Closing connection to {key.data.address[0]}:{key.data.address[1]} ...")
-            selector.unregister(connection_socket)
-            connection_socket.close()
 
 # Funtion initiates a connection to the server
 def initiate_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
@@ -53,38 +37,58 @@ def initiate_connection(host: str, port: int, selector: selectors.SelectSelector
         connection_socket.connect_ex((host, port)) # Connect to the server address
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"") # Server address
+        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False) # Server address
         selector.register(connection_socket, events, data=data)
 
-        readable, writeable, _ = select.select([connection_socket], [connection_socket], [], 5) # Waits 5 seconds for the connection to be established
-
-        if not readable or not writeable:
-            print(f"Connection to {host}:{port} failed.")
-            if connection_socket in locals():
-                connection_socket.close()
-        
-            return None, CONNECTION_INITIATE_ERROR
+        # *** Written with the help of AI ***
+        # Wait for the connection to complete (blocks all other operations)
+        while not data.connected:
+            events = selector.select(timeout=5)  # Wait 5 seconds until timeout
+            for key, mask in events:
+                if mask & selectors.EVENT_WRITE:
+                    # Check if the connection was successful
+                    err = connection_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                    if err == 0:
+                        print(f"Connection to {host}:{port} successful.")
+                        data.connected = True
+                        return connection_socket, SUCCESS
+                    else:
+                        print(f"Connection to {host}:{port} failed with error: {errno.errorcode[err]}")
+                        selector.unregister(connection_socket)
+                        return None, CONNECTION_INITIATE_ERROR
 
         return connection_socket, SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-                
-        # Close the connection socket if it was created
-        if connection_socket in locals():
-            connection_socket.close()
-        
         return None, CONNECTION_INITIATE_ERROR
 
 # Function closes the connection to the server
 def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
+
     try:
         print(f"Closing connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]}...")
-
+        
         selector.unregister(connection_socket)
         connection_socket.close()
+        
+        return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-
         return CONNECTION_CLOSE_ERROR
+    
+# Function services current registered connections with their corresponding events
+def service_current_connection(key: selectors.SelectorKey, mask: int, selector: selectors.SelectSelector) -> int:
+    try:
+        connection_socket = key.fileobj
+
+        # Service read events
+        if mask & selectors.EVENT_READ:
+            # If there is no data to read, close the connection
+            if not connection_socket.recv(1024):
+                return close_connection(connection_socket, selector)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return CONNECTION_SERVICE_ERROR

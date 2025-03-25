@@ -1,2 +1,4 @@
-v1.03
-Finer refining of the client not being able to reach the server
+v1.04
+Added use of return value checking
+
+Solidified the checking of connections being made or not with AI

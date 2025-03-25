@@ -3,37 +3,49 @@ import selectors
 import sys
 
 from socket_creation_wrapper import *
-from connections import *
+from connections_wrapper import *
+from constants import *
 
 # Main program
 if __name__=='__main__':
     # Create a selector object
     selector = selectors.DefaultSelector()
     
-    # Assign the server IP address and port
+    # Assign the server IP address and port number
     server_host, server_port = sys.argv[1], int(sys.argv[2])
     
-    # Create listening socket
-    _ = create_listening_socket(server_host, server_port, selector)
+    # Create a listening socket
+    ret_val = create_listening_socket(server_host, server_port, selector)
+    if ret_val != SUCCESS:
+        print('Failed to create listening socket')
+        sys.exit(ret_val)
 
     # Main loop
     try:
         while True:
             # Get list of events from the selector
-            events = selector.select(timeout=None) # Timeout controls how long to wait for an event before returning
+            events = selector.select(timeout=None) # Timeout controls how long to wait for an event before exiting (none so server is always listening)
             
+            # Logic to service each event
             for key, mask in events:
+                # TODO: Check if event is from authenticated source and use something more secure than IP address to authenticate
+                
                 # If the event comes from the listening socket, accept a new connection
                 if key.data == "listening_socket":
-                    accept_new_connection(key.fileobj, selector)
+                    ret_val = accept_new_connection(key.fileobj, selector)
+                    if ret_val != SUCCESS:
+                        print('Failed to accept new connection')
+                        continue
+
                 # Otherwise, service the current connection
                 else:
-                    service_current_connection(key, mask, selector)
+                    ret_val = service_current_connection(key, mask, selector)
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
+    # Final excecution
     finally:
-        # Close connections used
         selector.close()
-        # listening_socket.close()
         print("Server closed.")
+        sys.exit(ret_val)

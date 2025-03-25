@@ -3,7 +3,8 @@ import sys
 import selectors
 import time
 
-from connections import *
+from connections_wrapper import *
+from constants import *
 
 # Main program
 if __name__=='__main__':
@@ -16,19 +17,22 @@ if __name__=='__main__':
     try:
         while True:
             # Initiate a connection to the server
-            connection_socket, return_value = initiate_connection(server_host, server_port, selector)
-            
-            if return_value == CONNECTION_INITIATE_ERROR:
+            connection_socket, ret_val = initiate_connection(server_host, server_port, selector)
+            if ret_val != SUCCESS:
+                print('Failed to initiate connection')
+                time.sleep(2) # Debugging purposes
                 continue
 
-            time.sleep(2)
+            time.sleep(2) # Debugging purposes
 
             _ = close_connection(connection_socket, selector)
 
-            time.sleep(2)
+            time.sleep(2) # Debugging purposes
+
     except Exception as e:
         print(f"An error occurred: {e}")
+
     finally:
         selector.close()
-        # connection_socket.close()
         print("Connection closed.")
+        sys.exit(ret_val)
