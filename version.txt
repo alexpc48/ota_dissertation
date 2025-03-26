@@ -1,4 +1,4 @@
-v1.04
-Added use of return value checking
+v1.05
+Client can now send data to the server
 
-Solidified the checking of connections being made or not with AI
+It can send 2 messages, 1 at a time and recieve back the message after it is sent

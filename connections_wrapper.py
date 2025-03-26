@@ -28,16 +28,16 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         return CONNECTION_ACCEPT_ERROR
 
 # Funtion initiates a connection to the server
-def initiate_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
+def initiate_connection(host: str, port: int, messages: list, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
        
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
         connection_socket.connect_ex((host, port)) # Connect to the server address
-
+        msg_total = sum(len(message) for message in messages)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False) # Server address
+        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", msg_total=msg_total, recv_total=0, messages=messages.copy(), connected=False) # Server address
         selector.register(connection_socket, events, data=data)
 
         # *** Written with the help of AI ***
@@ -83,15 +83,19 @@ def service_current_connection(key: selectors.SelectorKey, mask: int, selector: 
     try:
         connection_socket = key.fileobj
 
-        # Service read events
+        # Service events
         if mask & selectors.EVENT_READ:
-            if connection_socket.recv(1024):
+            received_data = connection_socket.recv(1024)
+            if received_data:
                 print (f"Received data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                print (f"Data: {connection_socket.recv(1024)}")
+                key.data.outb += received_data
+            else:
                 return close_connection(connection_socket, selector)
-            # If there is no data to read, close the connection
-            if not connection_socket.recv(1024):
-                return close_connection(connection_socket, selector)
+        if mask & selectors.EVENT_WRITE:
+            if key.data.outb:
+                print(f"Echoing {key.data.outb!r} to {key.data.address}")
+                sent = connection_socket.send(key.data.outb)  # Should be ready to write
+                key.data.outb = key.data.outb[sent:]
 
     except Exception as e:
         print(f"An error occurred: {e}")
