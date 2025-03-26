@@ -69,7 +69,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         data = types.SimpleNamespace(address=address, inb=b"", outb=b"")
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
-        print(f"Connection from {address[0]}:{address[1]} registered with the selector.\n")
+        print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
+        print('[ACK] recieved')
         return SUCCESS
     
     except BlockingIOError:
@@ -101,7 +102,7 @@ def service_connection(selector: selectors.SelectSelector) -> int:
     try:
         while True:
             # print('servicing')
-            events = selector.select(timeout=None)
+            events = selector.select(timeout=1)
             for key, mask in events:
                 # Service active socket connections, not the listening socket
                 if key.data != "client_listening_socket":
@@ -109,7 +110,15 @@ def service_connection(selector: selectors.SelectSelector) -> int:
                     # Read events
                     if mask & selectors.EVENT_READ:
                         # print('Reading')
-                        print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                        recv_data = connection_socket.recv(1)
+                        if recv_data:
+                            print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                            key.data.inb += recv_data
+                        else:
+                            print(f'Data received: {key.data.inb}')
+                            selector.unregister(connection_socket)
+                            # connection_socket.close() # TODO: Check if socket is open and if it is, close it
+                            print(f"Connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} closed.")
                     # Write events
                     if mask & selectors.EVENT_WRITE:
                         continue

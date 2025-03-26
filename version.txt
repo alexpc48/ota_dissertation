@@ -1,6 +1,3 @@
-v1.07
-Restarted.
-Client has listening socket and allows server to connect.
-Server has listening socket and can connect and disconnect from the client.
-
-Threading used to show menu of operations.
+v1.08
+Server can push data to the client.
+Client can recieve the data pushed to it.
