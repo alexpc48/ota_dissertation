@@ -1,4 +1,3 @@
-v1.05
-Client can now send data to the server
-
-It can send 2 messages, 1 at a time and recieve back the message after it is sent
+v1.06
+Server can send and receive data to and from the client.
+Client can send and receive data to and from the server.

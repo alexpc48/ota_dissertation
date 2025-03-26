@@ -1,9 +1,9 @@
 # Libraries
 import selectors
 import sys
+import time
 
-from socket_creation_wrapper import *
-from connections_wrapper import *
+from functions import *
 from constants import *
 
 # Main program
@@ -14,7 +14,7 @@ if __name__=='__main__':
     # Assign the server IP address and port number
     server_host, server_port = sys.argv[1], int(sys.argv[2])
     
-    # Create a listening socket
+    # Create a listening socket to accept new connections
     ret_val = create_listening_socket(server_host, server_port, selector)
     if ret_val != SUCCESS:
         print('Failed to create listening socket')
@@ -22,6 +22,7 @@ if __name__=='__main__':
 
     # Main loop
     try:
+        # Run the server indefinitely
         while True:
             # Get list of events from the selector
             events = selector.select(timeout=None) # Timeout controls how long to wait for an event before exiting (none so server is always listening)
@@ -39,10 +40,17 @@ if __name__=='__main__':
 
                 # Otherwise, service the current connection
                 else:
-                    ret_val = service_current_connection(key, mask, selector)
+                    ret_val = service_current_connection(key, mask, selector, b'hello there EOF')
+                    if ret_val == SUCCESS:
+                        time.sleep(2) # Debugging purposes
+                        sys.exit(ret_val)
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
+    except KeyboardInterrupt:
+        print("Keyboard interrupt received.")
+        ret_val = KEYBOARD_INTERRUPT
 
     # Final excecution
     finally:

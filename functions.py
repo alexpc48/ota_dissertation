@@ -28,16 +28,16 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         return CONNECTION_ACCEPT_ERROR
 
 # Funtion initiates a connection to the server
-def initiate_connection(host: str, port: int, messages: list, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
+def initiate_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
        
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
         connection_socket.connect_ex((host, port)) # Connect to the server address
-        msg_total = sum(len(message) for message in messages)
+
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", msg_total=msg_total, recv_total=0, messages=messages.copy(), connected=False) # Server address
+        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False) # Server address
         selector.register(connection_socket, events, data=data)
 
         # *** Written with the help of AI ***
@@ -79,24 +79,56 @@ def close_connection(connection_socket: socket.socket, selector: selectors.Selec
         return CONNECTION_CLOSE_ERROR
     
 # Function services current registered connections with their corresponding events
-def service_current_connection(key: selectors.SelectorKey, mask: int, selector: selectors.SelectSelector) -> int:
+def service_current_connection(key: selectors.SelectorKey, mask: int, selector: selectors.SelectSelector, data_to_send) -> int:
     try:
         connection_socket = key.fileobj
 
         # Service events
+        # Read events
         if mask & selectors.EVENT_READ:
-            received_data = connection_socket.recv(1024)
-            if received_data:
-                print (f"Received data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                key.data.outb += received_data
-            else:
+            # print("Reading")
+            recv_data = connection_socket.recv(1024)
+            if recv_data:
+                print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                key.data.inb += recv_data
+                if b"EOF" in key.data.inb:
+                    print(f"Data {key.data.inb} received.")
+                    return close_connection(connection_socket, selector)
+            if not recv_data and not data_to_send:
                 return close_connection(connection_socket, selector)
+        # Write events
         if mask & selectors.EVENT_WRITE:
+            # print("Writing")
+            if not key.data.outb and data_to_send:
+                key.data.outb = data_to_send
+                data_to_send = None
             if key.data.outb:
-                print(f"Echoing {key.data.outb!r} to {key.data.address}")
-                sent = connection_socket.send(key.data.outb)  # Should be ready to write
+                print(f"Sending data to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                sent = connection_socket.sendall(key.data.outb)
                 key.data.outb = key.data.outb[sent:]
+                return SUCCESS
+            if not key.data.outb and not data_to_send:
+                pass
+                
 
     except Exception as e:
         print(f"An error occurred: {e}")
         return CONNECTION_SERVICE_ERROR
+    
+# Create an IPv4 listening socket
+def create_listening_socket(host: str, port: int, selector: selectors.SelectSelector) -> int:
+    try:
+        listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listening_socket.bind((host, port))
+        listening_socket.listen()
+        print(f"Listening on {host}:{port} ...")
+        listening_socket.setblocking(False)
+
+        # Register the listening socket with the selector
+        selector.register(listening_socket, selectors.EVENT_READ, data="listening_socket")
+
+        return SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return LISTENING_SOCKET_CREATION_ERROR
