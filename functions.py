@@ -7,6 +7,12 @@ import errno
 
 from constants import *
 
+def options_menu() -> int:
+    print("Options:")
+    print("1. Send a message")
+    print("99. Exit")
+    return int(input("Enter an option: "))
+
 # Funtion accepts new connections from clients and registers them with the selector
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:

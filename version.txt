@@ -1,3 +1,6 @@
-v1.06
-Server can send and receive data to and from the client.
-Client can send and receive data to and from the server.
+v1.07
+Restarted.
+Client has listening socket and allows server to connect.
+Server has listening socket and can connect and disconnect from the client.
+
+Threading used to show menu of operations.
