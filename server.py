@@ -67,7 +67,14 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         data = types.SimpleNamespace(address=address, inb=b"", outb=b"")
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
+        print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
+        print('[ACK] recieved')
         return SUCCESS
+    
+    except BlockingIOError:
+        # Handle non-blocking socket operation errors ([WinError 10035])
+        print("Non-blocking operation could not be completed immediately. Retrying ...\n")
+        return WAITING_ERROR
     
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -121,16 +128,9 @@ def push_update(client_host: str, client_port: int) -> int:
                         selector.unregister(connection_socket)
                         return CONNECTION_INITIATE_ERROR
                     
-        print('Sending data ...')
-        data.outb = b'Hello from server'
-        # while data.outb:
-        #     sent = connection_socket.send(data.outb)
-        #     data.outb = data.outb[sent:]
-        # print('Data sent\n')
-        
-        # print(f"Closing connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]}...")
-        # selector.unregister(connection_socket)
-        # connection_socket.close()
+        print('Preparing data to send ...')
+        data.outb = b'Update file'
+        print('Data ready to send.')
         return SUCCESS
     
     except Exception as e:
@@ -144,21 +144,26 @@ def service_connection(selector: selectors.SelectSelector) -> int:
             # print('servicing')
             events = selector.select(timeout=1)
             for key, mask in events:
-                # Service active socket connections, not the listening socket
+                # Service active socket connections, not t he listening socket
                 if key.data != "server_listening_socket":
                     connection_socket = key.fileobj
                     # Read events
                     if mask & selectors.EVENT_READ:
                         # print('Reading')
-                        # recv_data = connection_socket.recv(1024)
-                        # if recv_data:
-                        #     print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                        #     key.data.inb += recv_data
-                        # else:
-                        #     print(f'Data received: {key.data.inb}')
-                        #     selector.unregister(connection_socket)
-                        #     connection_socket.close() # TODO: Check if socket is open and if it is, close it
-                        print(f"Connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} closed.")
+                        while True:
+                            recv_data = connection_socket.recv(1)
+                            print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
+                            if recv_data == b'':
+                                break
+                            key.data.inb += recv_data
+                        if not recv_data:
+                            print(f'Data received: {key.data.inb}')
+                            try: selector.unregister(connection_socket)
+                            except: pass
+                            try: connection_socket.close() # TODO: Check if socket is open and if it is, close it
+                            except: pass
+                            print(f"Connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} closed.")
+                   
                     # Write events
                     if mask & selectors.EVENT_WRITE:
                         if key.data.outb:
@@ -168,9 +173,11 @@ def service_connection(selector: selectors.SelectSelector) -> int:
                             print('Data sent\n')
                         if not key.data.outb:
                             print(f"Closing connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]}...")
-                            selector.unregister(connection_socket)
-                            connection_socket.close()
-                        # print('Writing')
+                            try: selector.unregister(connection_socket)
+                            except: pass
+                            try: connection_socket.close() # TODO: Check if socket is open and if it is, close it
+                            except: pass
+
     except Exception as e:
         print(f"An error occurred: {e}")
         return CONNECTION_SERVICE_ERROR
