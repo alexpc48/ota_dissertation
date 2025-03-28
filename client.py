@@ -164,6 +164,7 @@ def check_for_update(server_host: str, server_port: int) -> int:
             print("There is no update ready.")
         update_avaliable = response_data.get("update_available")
         response_data.clear()  # Clear the response data for the next request
+        
         print("Update check request processed successfully.")
         return update_avaliable, SUCCESS
     

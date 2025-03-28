@@ -1,4 +1,2 @@
-v1.13
-Client can check if there are any updates
-Client can download any updates
-Server can push updates to the client
+v1.14
+Made the EOF request for checking if the file was received or not a bit more unique.

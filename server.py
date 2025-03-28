@@ -133,12 +133,16 @@ def push_update(client_host: str, client_port: int) -> int:
         data.outb, _ = get_update_file()
         print('Data ready to send.')
 
+        # TODO: Just sends the data and doesnt check if the client can receive it yet.
+        # Need to add check to ask client if they can receive the data or not, and if not then check back later to see if they are.
+
         # Wait for the response to be processed by service_connection
         response_event.clear()
         response_event.wait(timeout=10)  # Wait for up to 10 seconds
         if not response_event.is_set():
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
+        
         print("Pushed update successfully.")
         return SUCCESS
     

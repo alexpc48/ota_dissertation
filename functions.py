@@ -1,6 +1,7 @@
 import selectors
 import threading
 import typing
+import sys
 
 from constants import *
 
@@ -54,7 +55,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
                             print("Update download request received.\nSending update ...")
                             update_file, _ = get_update_file()
-                            key.data.outb = update_file + RECEIVED_FILE_CHECK_REQUEST
+                            key.data.outb = update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
                         # Server
                         elif key.data.inb == FILE_RECEIVED:
@@ -77,8 +78,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Client
                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
                         # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
-                        elif RECEIVED_FILE_CHECK_REQUEST in key.data.inb:
+                        elif (EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
                             print("File receive check request received.")
+                            print(f"File data: {key.data.inb.rstrip(EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST)}")
                             print("Sending confirmation to server ...")
                             key.data.outb = FILE_RECEIVED
                         
