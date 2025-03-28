@@ -1,3 +1,2 @@
-v1.08
-Server can push data to the client.
-Client can recieve the data pushed to it.
+v1.09
+Server and client can send data back and forth to each other

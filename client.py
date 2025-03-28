@@ -156,31 +156,28 @@ def service_connection(selector: selectors.SelectSelector) -> int:
                         # print('Reading')
                         while True:
                             recv_data = connection_socket.recv(1)
+                            print(recv_data)
                             print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
                             if recv_data == b'':
                                 break
                             key.data.inb += recv_data
                         if not recv_data:
                             print(f'Data received: {key.data.inb}')
-                            try: selector.unregister(connection_socket)
-                            except: pass
-                            try: connection_socket.close() # TODO: Check if socket is open and if it is, close it
-                            except: pass
-                            print(f"Connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} closed.")
+                            selector.unregister(connection_socket)
+                            print('Socket unregistered')
+                            connection_socket.close()
+                            print('Socket closed')
+                            # print(f"Connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} closed.")
                    
                     # Write events
                     if mask & selectors.EVENT_WRITE:
+                        print('Writing')
                         if key.data.outb:
                             while key.data.outb:
                                 sent = connection_socket.send(key.data.outb)
                                 key.data.outb = key.data.outb[sent:]
                             print('Data sent\n')
-                        if not key.data.outb:
-                            print(f"Closing connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]}...")
-                            try: selector.unregister(connection_socket)
-                            except: pass
-                            try: connection_socket.close() # TODO: Check if socket is open and if it is, close it
-                            except: pass
+                            connection_socket.shutdown(socket.SHUT_WR)  # Shutdown the socket after sending data
 
     except Exception as e:
         print(f"An error occurred: {e}")
