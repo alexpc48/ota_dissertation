@@ -1,3 +1,4 @@
-v1.12
-Cleaned up v1.11 implementation
-v1.11 and v1.12 SHOULD BE PART OF SCRUM-15
+v1.13
+Client can check if there are any updates
+Client can download any updates
+Server can push updates to the client

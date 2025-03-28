@@ -6,3 +6,4 @@ https://man7.org/linux/man-pages/man2/connect.2.html
 https://stackoverflow.com/questions/27241804/sending-a-file-over-tcp-sockets-in-python
 https://stackoverflow.com/questions/56760686/is-there-a-way-to-shorten-connect-exs-timeout
 https://stackoverflow.com/questions/7585435/how-to-convert-string-to-bytes-in-python-3
+Used AI for threading responses

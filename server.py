@@ -132,16 +132,20 @@ def push_update(client_host: str, client_port: int) -> int:
         print('Preparing data to send ...')
         data.outb, _ = get_update_file()
         print('Data ready to send.')
+
+        # Wait for the response to be processed by service_connection
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for server response.")
+            return CONNECTION_SERVICE_ERROR
+        print("Pushed update successfully.")
         return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
         return CONNECTION_INITIATE_ERROR
 
-# Get update file
-def get_update_file() -> typing.Tuple[bytes, int]:
-    file = b'I am an update file'
-    return file, SUCCESS
 
 
 
@@ -177,7 +181,9 @@ if __name__=='__main__':
     listen_thread = threading.Thread(target=listen, daemon=False, args=(selector,))
 
     # Servicing loop
-    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector,))
+    response_event = threading.Event()
+    response_data = {}
+    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data))
 
     # Start the threads
     options_menu_thread.start()

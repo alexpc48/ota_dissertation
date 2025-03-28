@@ -35,7 +35,12 @@ def menu_thread() -> None:
                 match option:
                     case 1: # Request update from the server
                         print("Checking for updates ...")
-                        check_for_update(server_host, server_port)
+                        _, _ = check_for_update(server_host, server_port)
+                    case 2: # Download updates from the server
+                        print("Downloading updates ...")
+                        ret_val = download_update(server_host, server_port)
+                        if ret_val == UPDATE_NOT_AVALIABLE:
+                            print("No updates available to download.")
                     case 98: # Redisplay the options menu
                         continue
                     case 99: # Exit the program
@@ -129,7 +134,7 @@ def check_for_update(server_host: str, server_port: int) -> int:
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
             events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
-            for key, mask in events:
+            for _, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:
                     err = connection_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
@@ -146,11 +151,83 @@ def check_for_update(server_host: str, server_port: int) -> int:
         print('Preparing data to send ...')
         data.outb = UPDATE_CHECK_REQUEST
         print('Data ready to send.')
+
+        # Wait for the response to be processed by service_connection
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for server response.")
+            return CONNECTION_SERVICE_ERROR
+        if response_data.get("update_available"):
+            print("There is an update ready.")
+        elif not response_data.get("update_available"):
+            print("There is no update ready.")
+        update_avaliable = response_data.get("update_available")
+        response_data.clear()  # Clear the response data for the next request
+        print("Update check request processed successfully.")
+        return update_avaliable, SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return CHECK_UPDATE_ERROR
+
+# Download the update from the server (checks first to see if there is an update)
+def download_update(server_host: str, server_port: int) -> int:
+    update_available, _ = check_for_update(server_host, server_port)
+    if not update_available:
+        print("No update available to download.")
+        return UPDATE_NOT_AVALIABLE
+    
+    try:
+        print(f"Initiating connection to {server_host}:{server_port} ...")
+
+        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connection_socket.setblocking(False)
+        connection_socket.connect_ex((server_host, server_port))
+        print('[SYN] sent')
+
+        # Register the connection with the selector for read and write events
+        events = selectors.EVENT_READ | selectors.EVENT_WRITE
+        data = types.SimpleNamespace(address=(server_host, server_port), inb=b"", outb=b"", connected=False)
+        selector.register(connection_socket, events, data=data)
+
+        # *** Written with the help of AI ***
+        # Wait for the connection to complete (blocks all other operations)
+        while not data.connected:
+            events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
+            for _, mask in events:
+                # Check for write event (TCP socket enters write event after successfull connection)
+                if mask & selectors.EVENT_WRITE:
+                    err = connection_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                    if err == 0:
+                        print(f"Connection to {server_host}:{server_port} successful.")
+                        data.connected = True
+                        print('[SYN-ACK] received')
+                        break
+                    else:
+                        print(f"Connection to {server_host}:{server_port} failed with error: {errno.errorcode[err]}")
+                        selector.unregister(connection_socket)
+                        return CONNECTION_INITIATE_ERROR
+                    
+        print('Preparing data to send ...')
+        data.outb = UPDATE_DOWNLOAD_REQUEST
+        print('Data ready to send.')
+
+        # Wait for the response to be processed by service_connection
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for server response.")
+            return CONNECTION_SERVICE_ERROR
+
+        response_data.clear()  # Clear the response data for the next request
+        print("Update downloaded successfully.")
         return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return CONNECTION_INITIATE_ERROR
+        return DOWNLOAD_UPDATE_ERROR
+
 
 
 
@@ -185,7 +262,9 @@ if __name__=='__main__':
     listen_thread = threading.Thread(target=listen, daemon=False, args=(selector,))
     
     # Servicing loop
-    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector,))
+    response_event = threading.Event()
+    response_data = {}
+    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data))
 
     # Start the threads
     options_menu_thread.start()
