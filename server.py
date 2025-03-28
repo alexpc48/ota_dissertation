@@ -6,7 +6,6 @@ import threading
 import os
 import types
 import errno
-import typing
 
 from constants import *
 from functions import *
@@ -14,9 +13,15 @@ from functions import *
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
+    print("-------------------------------------------------------------------------------------------")
     print("Options:")
-    print("1. Push and update")
+    print("-------------------------------------------------------------------------------------------")
+    print("1. Push an update to the client")
+    print("-------------------------------------------------------------------------------------------")
+    print("98. Redisplay the options menu") # Redisplays the options menu
     print("99. Exit")
+    print("-------------------------------------------------------------------------------------------")
+
     return int(input("Enter an option: "))
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
@@ -29,6 +34,10 @@ def menu_thread() -> None:
                     case 1: # Request update from the server
                         print("Pushing update ...")
                         ret_val = push_update(client_host, client_port)
+                        if ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                            print("Client is not ready to receive the update.")
+                    case 98: # Redisplay the options menu
+                        continue
                     case 99: # Exit the program
                         print("Exiting ...")
                         break

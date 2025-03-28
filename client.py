@@ -13,17 +13,21 @@ from functions import *
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
+    print("-------------------------------------------------------------------------------------------")
     print("Options:")
+    print("-------------------------------------------------------------------------------------------")
     print("1. Check for an update") # Checks the server for an update it
     print("2. Download updates") # Downloads the updates from the server
-
+    print("-------------------------------------------------------------------------------------------")
     print("10. Change the update readiness status") # Changes the update readiness status
-
+    print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status") # Displays the current update readiness status
     print("21. Display the update version") # Displays the current update version
     print("98. Redisplay the options menu") # Redisplays the options menu
-
+    print("-------------------------------------------------------------------------------------------")
     print("99. Exit")
+    print("-------------------------------------------------------------------------------------------")
+
     return int(input("Enter an option: "))
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
@@ -177,6 +181,7 @@ def check_for_update(server_host: str, server_port: int) -> int:
         return CHECK_UPDATE_ERROR
 
 # Download the update from the server (checks first to see if there is an update)
+# TODO: Should check if the client is ready to receive the update before downloading it
 def download_update(server_host: str, server_port: int) -> int:
     update_available, _ = check_for_update(server_host, server_port)
     if not update_available:
@@ -202,7 +207,7 @@ def download_update(server_host: str, server_port: int) -> int:
             # FIXME: Timeout doesnt work
             # The program errors and doenst work even when the client does come up
             # Not urgent for now (out of scope) but does need fixing
-            events = selector.select(timeout=1)
+            events = selector.select(timeout=10)
             for _, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:

@@ -1,2 +1,2 @@
-v1.16
-Server now checks if client is ready to receive the update or not
+v1.17
+Text files can be sent in 1 byte chunks from the server to the client

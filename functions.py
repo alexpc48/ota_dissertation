@@ -1,7 +1,6 @@
 import selectors
 import threading
 import typing
-import sys
 
 from constants import *
 
@@ -14,8 +13,9 @@ def check_for_update() -> int:
 
 # Get update file
 def get_update_file() -> typing.Tuple[bytes, int]:
-    file = b'I am an update file'
-    return file, SUCCESS
+    with open('sw_image_example.txt', 'rb') as file:
+        file_data = file.read()
+    return file_data, SUCCESS
 
 # Check if client is ready to receive the update
 def check_update_readiness() -> int:
@@ -110,6 +110,12 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif (EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
                             print("File receive check request received.")
                             print(f"File data: {key.data.inb.rstrip(EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST)}")
+                            # Reconstruct the received file data and write it to a file
+                            file_data = key.data.inb.rstrip(EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST)
+                            new_file_name = 'received_file.txt'
+                            with open(new_file_name, 'wb') as file:
+                                file.write(file_data)
+                            print(f"File reconstructed and written to {new_file_name}.")
                             print("Sending confirmation to server ...")
                             key.data.outb = FILE_RECEIVED
                         
