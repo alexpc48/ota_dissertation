@@ -1,3 +1,3 @@
-v1.11
-Client can request from the server asking if there are any updates?
-Server can respond saying there is or not and then the connection closes
+v1.12
+Cleaned up v1.11 implementation
+v1.11 and v1.12 SHOULD BE PART OF SCRUM-15
