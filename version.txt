@@ -1,2 +1,4 @@
-v1.09
-Server and client can send data back and forth to each other
+v1.10
+Cleaned up communication logs
+
+Ready to merge as backbone application

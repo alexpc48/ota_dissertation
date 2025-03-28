@@ -26,13 +26,13 @@ def menu_thread() -> None:
             if option:
                 match option:
                     case 1: # Request update from the server
-                        print("Pushing update ...\n")
+                        print("Pushing update ...")
                         push_update(client_host, client_port)
                     case 99: # Exit the program
-                        print("Exiting ...\n")
+                        print("Exiting ...")
                         break
                     case _:
-                        print("Invalid option selected.\n")
+                        print("Invalid option selected.")
         os._exit(SUCCESS)
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -44,11 +44,11 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listening_socket.bind((host, port))
         listening_socket.listen()
-        print(f"Listening on {host}:{port} for client connections ...\n")
+        print(f"Listening on {host}:{port} for client connections ...")
         listening_socket.setblocking(True)
 
         # Register the listening socket with the selector
-        selector.register(listening_socket, selectors.EVENT_READ, data="server_listening_socket")
+        selector.register(listening_socket, selectors.EVENT_READ, data="listening_socket")
         return SUCCESS
     
     except Exception as e:
@@ -73,7 +73,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     
     except BlockingIOError:
         # Handle non-blocking socket operation errors ([WinError 10035])
-        print("Non-blocking operation could not be completed immediately. Retrying ...\n")
+        print("Non-blocking operation could not be completed immediately. Retrying ...")
         return WAITING_ERROR
     
     except Exception as e:
@@ -89,7 +89,7 @@ def listen(selector: selectors.SelectSelector) -> int:
             if events:
                 for key, _ in events:
                     # If the event comes from the listening socket, accept the new connection
-                    if key.data == "server_listening_socket":
+                    if key.data == "listening_socket":
                         accept_new_connection(key.fileobj, selector)
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -141,37 +141,38 @@ def push_update(client_host: str, client_port: int) -> int:
 def service_connection(selector: selectors.SelectSelector) -> int:
     try:
         while True:
-            # print('servicing')
             events = selector.select(timeout=1)
             for key, mask in events:
-                # Service active socket connections, not t he listening socket
-                if key.data != "server_listening_socket":
-                    connection_socket = key.fileobj
-                    # Read events
-                    if mask & selectors.EVENT_READ:
-                        # print('Reading')
-                        while True:
-                            recv_data = connection_socket.recv(1)
-                            print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                            if recv_data == b'':
-                                break
-                            key.data.inb += recv_data
-                        if not recv_data:
-                            print(f'Data received: {key.data.inb}')
-                            selector.unregister(connection_socket)
-                            print('Socket unregistered')
-                            connection_socket.close()
-                            print('Socket closed')
-                            
-                    # Write events
-                    if mask & selectors.EVENT_WRITE:
-                        if key.data.outb:
-                            while key.data.outb:
-                                sent = connection_socket.send(key.data.outb)
-                                key.data.outb = key.data.outb[sent:]
-                            print('Data sent\n')
-                            connection_socket.shutdown(socket.SHUT_WR)  # Shutdown the socket after sending data
-
+                # Service active socket connections, not the listening socket
+                if key.data == "listening_socket":
+                    continue
+                connection_socket = key.fileobj
+                remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
+                # Read events
+                if mask & selectors.EVENT_READ:
+                    while True:
+                        recv_data = connection_socket.recv(BYTES_TO_READ)
+                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+                        if recv_data == b'':
+                            print(f"All data from {remote_host}:{remote_port} received.")
+                            break
+                        key.data.inb += recv_data
+                    if not recv_data:
+                        print(f'Data received: {key.data.inb}')
+                        selector.unregister(connection_socket)
+                        print('Socket unregistered from the selector.')
+                        connection_socket.close()
+                        print(f'Connection with {remote_host}:{remote_port} closed.')
+                # Write events
+                if mask & selectors.EVENT_WRITE:
+                    if key.data.outb:
+                        print(f"Sending data to {remote_host}:{remote_port} ...")
+                        while key.data.outb:
+                            sent = connection_socket.send(key.data.outb)
+                            key.data.outb = key.data.outb[sent:]
+                        print("Data sent.")
+                        connection_socket.shutdown(socket.SHUT_WR) # Sends b'' to indicate all data has been sent
+                        print("Socket shutdown.")
 
     except Exception as e:
         print(f"An error occurred: {e}")
