@@ -1,4 +1,3 @@
-v1.10
-Cleaned up communication logs
-
-Ready to merge as backbone application
+v1.12
+Cleaned up v1.11 implementation
+v1.11 and v1.12 SHOULD BE PART OF SCRUM-15

@@ -8,6 +8,7 @@ import types
 import errno
 
 from constants import *
+from functions import *
 
 # FUNCTIONS
 # Function to display the options menu
@@ -15,10 +16,13 @@ def options_menu() -> int:
     print("Options:")
     print("1. Check for an update") # Checks the server for an update it
     print("2. Download updates") # Downloads the updates from the server
-    print("3. Change the update readiness status") # Changes the update readiness status
+
+    print("10. Change the update readiness status") # Changes the update readiness status
+
     print("20. Display the update readiness status") # Displays the current update readiness status
     print("21. Display the update version") # Displays the current update version
     print("98. Redisplay the options menu") # Redisplays the options menu
+
     print("99. Exit")
     return int(input("Enter an option: "))
 
@@ -140,54 +144,13 @@ def check_for_update(server_host: str, server_port: int) -> int:
                         return CONNECTION_INITIATE_ERROR
                     
         print('Preparing data to send ...')
-        data.outb = b'Is there any update?'
+        data.outb = UPDATE_CHECK_REQUEST
         print('Data ready to send.')
         return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
         return CONNECTION_INITIATE_ERROR
-
-# Service the current active connections
-def service_connection(selector: selectors.SelectSelector) -> int:
-    try:
-        while True:
-            events = selector.select(timeout=1)
-            for key, mask in events:
-                # Service active socket connections, not the listening socket
-                if key.data == "listening_socket":
-                    continue
-                connection_socket = key.fileobj
-                remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                # Read events
-                if mask & selectors.EVENT_READ:
-                    while True:
-                        recv_data = connection_socket.recv(BYTES_TO_READ)
-                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                        if recv_data == b'':
-                            print(f"All data from {remote_host}:{remote_port} received.")
-                            break
-                        key.data.inb += recv_data
-                    if not recv_data:
-                        print(f'Data received: {key.data.inb}')
-                        selector.unregister(connection_socket)
-                        print('Socket unregistered from the selector.')
-                        connection_socket.close()
-                        print(f'Connection with {remote_host}:{remote_port} closed.')
-                # Write events
-                if mask & selectors.EVENT_WRITE:
-                    if key.data.outb:
-                        print(f"Sending data to {remote_host}:{remote_port} ...")
-                        while key.data.outb:
-                            sent = connection_socket.send(key.data.outb)
-                            key.data.outb = key.data.outb[sent:]
-                        print("Data sent.")
-                        connection_socket.shutdown(socket.SHUT_WR) # Sends b'' to indicate all data has been sent
-                        print("Socket shutdown.")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return CONNECTION_SERVICE_ERROR
 
 
 
