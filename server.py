@@ -114,6 +114,9 @@ def push_update(client_host: str, client_port: int) -> int:
         # *** Written with the help of AI ***
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
+            # TODO: Timeout doesnt work
+            # The program errors and doenst work even when the client does come up
+            # Not urgent for now (out of scope) but does need fixing
             events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
             for key, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)

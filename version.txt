@@ -1,2 +1,2 @@
-v1.14
-Made the EOF request for checking if the file was received or not a bit more unique.
+v1.15
+Identified bug with waiting on connections to happen
