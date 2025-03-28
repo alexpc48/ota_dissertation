@@ -28,7 +28,7 @@ def menu_thread() -> None:
                 match option:
                     case 1: # Request update from the server
                         print("Pushing update ...")
-                        push_update(client_host, client_port)
+                        ret_val = push_update(client_host, client_port)
                     case 99: # Exit the program
                         print("Exiting ...")
                         break
@@ -114,10 +114,10 @@ def push_update(client_host: str, client_port: int) -> int:
         # *** Written with the help of AI ***
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
-            # TODO: Timeout doesnt work
+            # FIXME: Timeout doesnt work
             # The program errors and doenst work even when the client does come up
             # Not urgent for now (out of scope) but does need fixing
-            events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
+            events = selector.select(timeout=10)
             for key, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:
@@ -131,7 +131,23 @@ def push_update(client_host: str, client_port: int) -> int:
                         print(f"Connection to {client_host}:{client_port} failed with error: {errno.errorcode[err]}\n")
                         selector.unregister(connection_socket)
                         return CONNECTION_INITIATE_ERROR
-                    
+
+        print('Preparing data to send ...')
+        data.outb = UPDATE_READINESS_REQUEST
+        print('Data ready to send.')
+
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return CONNECTION_SERVICE_ERROR
+        
+        if response_data.get("update_readiness"):
+            print("Client is ready to receive the update.")
+        elif not response_data.get("update_readiness"):
+            print("Client is not ready to receive the update.")
+            return CLIENT_NOT_UPDATE_READY_ERROR
+
         print('Preparing data to send ...')
         data.outb, _ = get_update_file()
         print('Data ready to send.')
@@ -143,9 +159,10 @@ def push_update(client_host: str, client_port: int) -> int:
         response_event.clear()
         response_event.wait(timeout=10)  # Wait for up to 10 seconds
         if not response_event.is_set():
-            print("Timeout waiting for server response.")
+            print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
+        response_data.clear()  # Clear the response data for the next request
         print("Pushed update successfully.")
         return SUCCESS
     

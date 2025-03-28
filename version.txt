@@ -1,2 +1,2 @@
-v1.15
-Identified bug with waiting on connections to happen
+v1.16
+Server now checks if client is ready to receive the update or not

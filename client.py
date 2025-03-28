@@ -133,10 +133,10 @@ def check_for_update(server_host: str, server_port: int) -> int:
         # *** Written with the help of AI ***
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
-            # TODO: Timeout doesnt work
+            # FIXME: Timeout doesnt work
             # The program errors and doenst work even when the client does come up
             # Not urgent for now (out of scope) but does need fixing
-            events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
+            events = selector.select(timeout=10)
             for _, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:
@@ -161,13 +161,14 @@ def check_for_update(server_host: str, server_port: int) -> int:
         if not response_event.is_set():
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
+        
         if response_data.get("update_available"):
             print("There is an update ready.")
         elif not response_data.get("update_available"):
             print("There is no update ready.")
         update_avaliable = response_data.get("update_available")
+
         response_data.clear()  # Clear the response data for the next request
-        
         print("Update check request processed successfully.")
         return update_avaliable, SUCCESS
     
@@ -198,10 +199,10 @@ def download_update(server_host: str, server_port: int) -> int:
         # *** Written with the help of AI ***
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
-            # TODO: Timeout doesnt work
+            # FIXME: Timeout doesnt work
             # The program errors and doenst work even when the client does come up
             # Not urgent for now (out of scope) but does need fixing
-            events = selector.select(timeout=1)  # Wait 10 seconds until timeout of connection
+            events = selector.select(timeout=1)
             for _, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:

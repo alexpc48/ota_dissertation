@@ -17,6 +17,12 @@ def get_update_file() -> typing.Tuple[bytes, int]:
     file = b'I am an update file'
     return file, SUCCESS
 
+# Check if client is ready to receive the update
+def check_update_readiness() -> int:
+    update_readiness = False
+    update_readiness_bytes = UPDATE_NOT_READY
+    return update_readiness, update_readiness_bytes, SUCCESS
+
 # Service the current active connections (shared function with server and client - TODO: Needs seperating)
 def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
@@ -60,6 +66,18 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Server
                         elif key.data.inb == FILE_RECEIVED:
                             print("File received by the client.")
+                        
+                        # Server
+                        elif key.data.inb == UPDATE_READY:
+                            print("Client is ready to receive the update.")
+                            response_data["update_readiness"] = True
+                            update_file, _ = get_update_file()
+                            key.data.outb = update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
+
+                        # Server
+                        elif key.data.inb == UPDATE_NOT_READY:
+                            print("Client is not ready to receive the update.")
+                            response_data["update_readiness"] = False
 
                         # Server and client
                         elif key.data.inb == b'':
@@ -74,6 +92,17 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_NOT_AVALIABLE:
                             print("There is no update available.")
                             response_data["update_available"] = False
+
+                        # Client
+                        elif key.data.inb == UPDATE_READINESS_REQUEST:
+                            print("Update readiness request received.")
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness()
+                            if update_readiness:
+                                print("Client is ready to receive the update.")
+                                key.data.outb = update_readiness_bytes
+                            else:
+                                print("Client is not ready to receive the update.")
+                                key.data.outb = update_readiness_bytes
 
                         # Client
                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
