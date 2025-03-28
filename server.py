@@ -151,14 +151,35 @@ def service_connection(selector: selectors.SelectSelector) -> int:
                 # Read events
                 if mask & selectors.EVENT_READ:
                     while True:
-                        recv_data = connection_socket.recv(BYTES_TO_READ)
-                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                        if recv_data == b'':
-                            print(f"All data from {remote_host}:{remote_port} received.")
+                        try: 
+                            recv_data = connection_socket.recv(BYTES_TO_READ)
+                            print(recv_data)
+                            print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+                            if not recv_data or recv_data == EOF_BYTE:
+                                print(f"All data from {remote_host}:{remote_port} received.")
+                                break
+                            key.data.inb += recv_data
+                        except:
+                            print("No connection")
                             break
-                        key.data.inb += recv_data
-                    if not recv_data:
+                    if not recv_data or recv_data == EOF_BYTE:
                         print(f'Data received: {key.data.inb}')
+                        if key.data.inb == UPDATE_CHECK_REQUEST:
+                            print("Update check request received.\nChecking for updates ...")
+                            if UPDATE_AVALIABLE:
+                                print("Update available.\nSending update ...")
+                                key.data.outb = b'Update file'
+                            else:
+                                print("No updates available.\nSending no update ...")
+                                key.data.outb = b'No update'
+                        elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
+                            print("Update download request received.\nDownloading update ...")
+                            # TODO: Do soemthing to download and sent the update
+                        else:
+                            print("Invalid request code.")
+                        key.data.inb = b''  # Clear the input buffer
+                    print(key.data.outb)
+                    if (not recv_data or recv_data == EOF_BYTE) and not key.data.outb:
                         selector.unregister(connection_socket)
                         print('Socket unregistered from the selector.')
                         connection_socket.close()
@@ -167,12 +188,12 @@ def service_connection(selector: selectors.SelectSelector) -> int:
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
                         print(f"Sending data to {remote_host}:{remote_port} ...")
+                        key.data.outb += EOF_BYTE
                         while key.data.outb:
                             sent = connection_socket.send(key.data.outb)
                             key.data.outb = key.data.outb[sent:]
+                        print(key.data.outb)
                         print("Data sent.")
-                        connection_socket.shutdown(socket.SHUT_WR) # Sends b'' to indicate all data has been sent
-                        print("Socket shutdown.")
 
     except Exception as e:
         print(f"An error occurred: {e}")
