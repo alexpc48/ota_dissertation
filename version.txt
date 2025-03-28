@@ -1,0 +1,4 @@
+v1.10
+Cleaned up communication logs
+
+Ready to merge as backbone application
