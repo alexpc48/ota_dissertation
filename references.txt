@@ -7,3 +7,4 @@ https://stackoverflow.com/questions/27241804/sending-a-file-over-tcp-sockets-in-
 https://stackoverflow.com/questions/56760686/is-there-a-way-to-shorten-connect-exs-timeout
 https://stackoverflow.com/questions/7585435/how-to-convert-string-to-bytes-in-python-3
 Used AI for threading responses
+https://docs.python.org/3/library/random.html

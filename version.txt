@@ -1,2 +1,2 @@
-v1.17
-Text files can be sent in 1 byte chunks from the server to the client
+v1.18
+Picture of Snoopy can be downloaded from the server by the client
