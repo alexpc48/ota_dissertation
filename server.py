@@ -13,16 +13,22 @@ from functions import *
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
-    print("-------------------------------------------------------------------------------------------")
+    print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
     print("1. Push an update to the client")
     print("-------------------------------------------------------------------------------------------")
-    print("98. Redisplay the options menu") # Redisplays the options menu
+    print("10. Get the client update readiness status") # TODO
+    print("11. Get the client update status") # Check if the update has been installed, failed, behind, etc. TODO
+    print("12. Get the client update version") # TODO
+    print("-------------------------------------------------------------------------------------------")
+    print("20. Change the update file")
+    print("-------------------------------------------------------------------------------------------")
+    print("98. Redisplay the options menu")
     print("99. Exit")
     print("-------------------------------------------------------------------------------------------")
 
-    return int(input("Enter an option: "))
+    return input("Enter an option: ")
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
 def menu_thread() -> None:
@@ -31,14 +37,14 @@ def menu_thread() -> None:
             option = options_menu()
             if option:
                 match option:
-                    case 1: # Request update from the server
+                    case '1': # Request update from the server
                         print("Pushing update ...")
                         ret_val = push_update(client_host, client_port)
                         if ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
-                            print("Client is not ready to receive the update.")
-                    case 98: # Redisplay the options menu
+                            print("Error: Client is not ready to receive the update.")
+                    case '98': # Redisplay the options menu
                         continue
-                    case 99: # Exit the program
+                    case '99': # Exit the program
                         print("Exiting ...")
                         break
                     case _:
@@ -151,25 +157,9 @@ def push_update(client_host: str, client_port: int) -> int:
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
-        if response_data.get("update_readiness"):
-            print("Client is ready to receive the update.")
-        elif not response_data.get("update_readiness"):
+        if response_data.get("update_readiness") == False:
             print("Client is not ready to receive the update.")
             return CLIENT_NOT_UPDATE_READY_ERROR
-
-        print('Preparing data to send ...')
-        data.outb, _ = get_update_file()
-        print('Data ready to send.')
-
-        # TODO: Just sends the data and doesnt check if the client can receive it yet.
-        # Need to add check to ask client if they can receive the data or not, and if not then check back later to see if they are.
-
-        # Wait for the response to be processed by service_connection
-        response_event.clear()
-        response_event.wait(timeout=10)  # Wait for up to 10 seconds
-        if not response_event.is_set():
-            print("Timeout waiting for client response.")
-            return CONNECTION_SERVICE_ERROR
         
         response_data.clear()  # Clear the response data for the next request
         print("Pushed update successfully.")

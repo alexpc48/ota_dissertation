@@ -1,2 +1,0 @@
-v1.18
-Picture of Snoopy can be downloaded from the server by the client
