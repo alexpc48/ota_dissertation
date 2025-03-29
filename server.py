@@ -6,6 +6,7 @@ import threading
 import os
 import types
 import errno
+import time
 
 from constants import *
 from functions import *
@@ -39,9 +40,11 @@ def menu_thread() -> None:
                 match option:
                     case '1': # Request update from the server
                         print("Pushing update ...")
-                        ret_val = push_update(client_host, client_port)
+                        ret_val = push_update()
                         if ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
                             print("Error: Client is not ready to receive the update.")
+                        elif ret_val == CONNECTION_INITIATE_ERROR:
+                            print("Error: Connection initiation failed.")
                     case '98': # Redisplay the options menu
                         continue
                     case '99': # Exit the program
@@ -112,47 +115,73 @@ def listen(selector: selectors.SelectSelector) -> int:
         os._exit(LISTENING_ERROR)
 
 # Function to push an update to the client
-def push_update(client_host: str, client_port: int) -> int:
+def push_update() -> int:
     try:
+        
+        db_connection = sqlite3.connect('server_ota_updates.db')
+        cursor = db_connection.cursor()
+        query_result = (cursor.execute("SELECT vehicles_entry_id, vehicle_id, vehicle_ip, vehicle_port FROM vehicles ORDER BY vehicles_entry_id")).fetchall()
+        db_connection.close()
+
+        for result in query_result:
+            print("Vehicle Entry ID: ", result[0])
+            print("Vehicle ID: ", result[1])
+            print("Vehicle IP: ", result[2])
+            print("Vehicle Port: ", result[3])
+        
+        vehicle_id_input = int(input("Enter the vehicle ID to push the update to: "))
+
+        # AI help for next() function
+        selected_vehicle = next((v for v in query_result if v[0] == vehicle_id_input), None)
+
+        client_host = selected_vehicle[2]
+        client_port = selected_vehicle[3]
+
         print(f"Initiating connection to {client_host}:{client_port} ...")
 
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
-        connection_socket.connect_ex((client_host, client_port))
-        print('[SYN] sent')
 
-        # Register the connection with the selector for read and write events
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(client_host, client_port), inb=b"", outb=b"", connected=False)
+        
+        # Wait for the connection to complete (blocks all other operations)
+        connection_attempts = 0
+        while not data.connected:
+            err = connection_socket.connect_ex((client_host, client_port)) # Try connecting to the client
+            print('[SYN] sent')
+            if err == 10056: # Connection made
+                print(f"Connection to {client_host}:{client_port} successful.")
+                data.connected = True
+                print('[SYN-ACK] received')
+                break
+            elif err == 10035:
+                print(f"Connection to {client_host}:{client_port} in progress ...")
+                continue
+            elif err == 10022: # Tried 5 times to connect then fails
+                print("No client found at the specified address.")
+                if connection_attempts > 5:
+                    print("Connection attempts exceeded. Exiting ...")
+                    return CONNECTION_INITIATE_ERROR
+                print("Trying again ...")
+                time.sleep(5)
+                connection_attempts += 1
+                continue
+            else:
+                print(f"Connection to {client_host}:{client_port} failed with error: {errno.errorcode[err]}\n")
+                print("Please check the client IP and port.")
+                return CONNECTION_INITIATE_ERROR
+
+        # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
 
-        # *** Written with the help of AI ***
-        # Wait for the connection to complete (blocks all other operations)
-        while not data.connected:
-            # FIXME: Timeout doesnt work
-            # The program errors and doenst work even when the client does come up
-            # Not urgent for now (out of scope) but does need fixing
-            events = selector.select(timeout=10)
-            for key, mask in events:
-                # Check for write event (TCP socket enters write event after successfull connection)
-                if mask & selectors.EVENT_WRITE:
-                    err = connection_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                    if err == 0:
-                        print(f"Connection to {client_host}:{client_port} successful.")
-                        data.connected = True
-                        print('[SYN-ACK] received')
-                        break
-                    else:
-                        print(f"Connection to {client_host}:{client_port} failed with error: {errno.errorcode[err]}\n")
-                        selector.unregister(connection_socket)
-                        return CONNECTION_INITIATE_ERROR
 
         print('Preparing data to send ...')
         data.outb = UPDATE_READINESS_REQUEST
         print('Data ready to send.')
 
         response_event.clear()
-        response_event.wait(timeout=None)  # Wait for up to 10 seconds
+        response_event.wait(timeout=None)
         if not response_event.is_set():
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
@@ -189,7 +218,8 @@ if __name__=='__main__':
     selector = selectors.DefaultSelector()
 
     # Assign variables from arguments
-    local_host, local_port, client_host, client_port = sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
+    database = None
+    local_host, local_port = sys.argv[1], int(sys.argv[2])
     
     # Create listening socket so that the server can connect forcefully (i.e, push updates to client)
     ret_val = create_listening_socket(local_host, local_port, selector)
@@ -206,7 +236,7 @@ if __name__=='__main__':
     # Servicing loop
     response_event = threading.Event()
     response_data = {}
-    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data))
+    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data, database))
 
     # Start the threads
     options_menu_thread.start()

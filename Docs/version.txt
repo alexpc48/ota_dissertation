@@ -1,5 +1,2 @@
-v1.22
-Simple database integrated
-Updaets are taken from the data and sent to the client
-Only the most recent update is taken
-No checking for current update version, etc.
+v1.23
+Fixed connection hanging issue if there was no remote

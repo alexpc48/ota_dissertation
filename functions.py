@@ -16,22 +16,25 @@ def check_for_update() -> int:
 # Get update file
 # Latest update file will be most recent database addition
 def get_update_file() -> typing.Tuple[bytes, int]:
-    db_connection = sqlite3.connect("ota_updates.db")
+    db_connection = sqlite3.connect("server_ota_updates.db")
     cursor = db_connection.cursor()
     update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
     db_connection.close()
     return update_version, update_file, SUCCESS
 
 # Client checks if it is ready to receive the update
-def check_update_readiness(update_readiness: bool) -> int:
-    if update_readiness == True:
+def check_update_readiness(database) -> int:
+    db_connection = sqlite3.connect(database)
+    cursor = db_connection.cursor()
+    update_readiness_status = bool((cursor.execute("SELECT update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()[0])
+    if update_readiness_status == True:
         update_readiness_bytes = UPDATE_READY
-    elif update_readiness == False:
+    elif update_readiness_status == False:
         update_readiness_bytes = UPDATE_NOT_READY
-    return update_readiness, update_readiness_bytes, SUCCESS
+    return update_readiness_status, update_readiness_bytes, SUCCESS
 
 # Service the current active connections (shared function with server and client - TODO: Needs seperating)
-def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict, database) -> int:
     try:
         while True:
             events = selector.select(timeout=1)
@@ -69,6 +72,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Update download request received.")
                             print("Preparing update file ...")
                             update_version, update_file, _ = get_update_file()
+                            # https://chatgpt.com/share/67e81027-c6bc-800e-adbc-2086ecf38797 Change to use this method
                             key.data.outb = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
                         # Server
@@ -101,11 +105,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Client
                         elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
                             print("Update readiness request received.")
-                            update_readiness, update_readiness_bytes, _ = check_update_readiness(key.data.update_readiness)
-                            if update_readiness:
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness(database)
+                            if update_readiness == True:
                                 print("Client is ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
-                            else:
+                            elif update_readiness == False:
                                 print("Client is not ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
 
