@@ -18,9 +18,9 @@ def options_menu() -> int:
     print("-------------------------------------------------------------------------------------------")
     print("1. Push an update to the client")
     print("-------------------------------------------------------------------------------------------")
-    print("10. Get the client update readiness status")
-    print("11. Get the client update status")
-    print("12. Get the client update version")
+    print("10. Get the client update readiness status") # TODO
+    print("11. Get the client update status") # Check if the update has been installed, failed, behind, etc. TODO
+    print("12. Get the client update version") # TODO
     print("-------------------------------------------------------------------------------------------")
     print("20. Change the update file")
     print("-------------------------------------------------------------------------------------------")
