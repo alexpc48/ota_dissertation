@@ -152,7 +152,7 @@ def push_update(client_host: str, client_port: int) -> int:
         print('Data ready to send.')
 
         response_event.clear()
-        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        response_event.wait(timeout=None)  # Wait for up to 10 seconds
         if not response_event.is_set():
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR

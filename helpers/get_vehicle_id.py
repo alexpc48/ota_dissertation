@@ -9,7 +9,10 @@ def get_bios_uuid():
             result = subprocess.check_output("wmic csproduct get UUID", shell=True).decode()
             return result.split("\n")[1].strip()
         elif platform.system() == "Linux":
-            result = subprocess.check_output("cat /sys/class/dmi/id/product_uuid", shell=True).decode()
+            try:
+                result = subprocess.check_output("cat /sys/class/dmi/id/product_uuid", shell=True).decode()
+            except:
+                result = subprocess.check_output("cat /etc/machine-id", shell=True).decode()
             return result.strip()
         else:
             return 1

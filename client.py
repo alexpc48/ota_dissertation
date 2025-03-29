@@ -205,7 +205,7 @@ def check_for_update(server_host: str, server_port: int) -> int:
 
         # Wait for the response to be processed by service_connection
         response_event.clear()
-        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        response_event.wait(timeout=None)  # Wait for up to 10 seconds
         if not response_event.is_set():
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
@@ -272,7 +272,7 @@ def download_update(server_host: str, server_port: int) -> int:
 
         # Wait for the response to be processed by service_connection
         response_event.clear()
-        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        response_event.wait(timeout=None)  # Wait for up to 10 seconds
         if not response_event.is_set():
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
