@@ -13,18 +13,22 @@ from functions import *
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
-    print("-------------------------------------------------------------------------------------------")
+    print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
     print("1. Push an update to the client")
-    print("2. Get client update readiness status")
-    print("3. Get client update status")
+    print("-------------------------------------------------------------------------------------------")
+    print("10. Get the client update readiness status")
+    print("11. Get the client update status")
+    print("12. Get the client update version")
+    print("-------------------------------------------------------------------------------------------")
+    print("20. Change the update file")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
     print("-------------------------------------------------------------------------------------------")
 
-    return int(input("Enter an option: "))
+    return input("Enter an option: ")
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
 def menu_thread() -> None:
@@ -33,14 +37,14 @@ def menu_thread() -> None:
             option = options_menu()
             if option:
                 match option:
-                    case 1: # Request update from the server
+                    case '1': # Request update from the server
                         print("Pushing update ...")
                         ret_val = push_update(client_host, client_port)
                         if ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
                             print("Error: Client is not ready to receive the update.")
-                    case 98: # Redisplay the options menu
+                    case '98': # Redisplay the options menu
                         continue
-                    case 99: # Exit the program
+                    case '99': # Exit the program
                         print("Exiting ...")
                         break
                     case _:

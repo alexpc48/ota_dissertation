@@ -1,2 +1,0 @@
-v1.19
-Update readiness status can now be changed for the client

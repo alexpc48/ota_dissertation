@@ -1,0 +1,4 @@
+v1.20
+Update now gets automatically named
+Using folder structure until database is implemented
+Update file version for the client is now lazily printed (it prints the client file name version)

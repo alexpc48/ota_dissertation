@@ -25,7 +25,8 @@ def options_menu() -> int:
     print("10. Change the update readiness status") # Changes the update readiness status
     print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status") # Displays the current update readiness status
-    print("21. Display the update version") # Displays the current update version
+    print("21. Display the update version") # Displays the current update version TODO: Implement properly for database
+    print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu") # Redisplays the options menu
     print("-------------------------------------------------------------------------------------------")
     print("99. Exit")
@@ -35,6 +36,7 @@ def options_menu() -> int:
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
 def menu_thread() -> None:
+    global update_readiness
     try:
         while True:
             option = options_menu()
@@ -49,7 +51,6 @@ def menu_thread() -> None:
                         if ret_val == UPDATE_NOT_AVALIABLE:
                             print("No updates available to download.")
                     case '10': # Change the update readiness status
-                        global update_readiness
                         print(f"Readiness status currently: {update_readiness}")
                         update_readiness_change_value = str(input("Enter new readiness status (True/False): "))
                         if update_readiness_change_value == str(update_readiness):
@@ -63,6 +64,15 @@ def menu_thread() -> None:
                                 print("Failed to change update readiness status")
                         else:
                             print("Invalid update readiness status.")
+                    case '20':
+                        print(f"Update readiness status: {update_readiness}")
+                    case '21':
+                        # AI for pattern matching
+                        directory = "Updates\\"  # Change this to your directory path
+                        pattern = r'^client[^\\/]*'  # Matches filenames that start with "client"
+                        for file_name in os.listdir(directory):
+                            if re.match(pattern, file_name):
+                                print(f"Update version: {file_name}")
                     case '98': # Redisplay the options menu
                         continue
                     case '99': # Exit the program
@@ -114,6 +124,7 @@ def change_update_readiness(update_readiness_change_value: str) -> int:
 
 # Funtion accepts new connections and registers them with the selector
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
+    global update_readiness
     try:
         # Get socket information
         connection_socket, address = socket.accept()
@@ -121,7 +132,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket.setblocking(False)
 
         # Register the connection with the selector
-        global update_readiness
         data = types.SimpleNamespace(address=address, inb=b"", outb=b"", update_readiness=update_readiness)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
