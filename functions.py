@@ -15,13 +15,15 @@ def check_for_update() -> int:
 def get_update_file() -> typing.Tuple[bytes, int]:
     with open('snoopy.png', 'rb') as file:
         file_data = file.read()
-    print(file_data)
+    # print(file_data)
     return file_data, SUCCESS
 
-# Check if client is ready to receive the update
-def check_update_readiness() -> int:
-    update_readiness = False
-    update_readiness_bytes = UPDATE_NOT_READY
+# Client checks if it is ready to receive the update
+def check_update_readiness(update_readiness: bool) -> int:
+    if update_readiness == True:
+        update_readiness_bytes = UPDATE_READY
+    elif update_readiness == False:
+        update_readiness_bytes = UPDATE_NOT_READY
     return update_readiness, update_readiness_bytes, SUCCESS
 
 # Service the current active connections (shared function with server and client - TODO: Needs seperating)
@@ -39,7 +41,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 if mask & selectors.EVENT_READ:
                     while True:
                         recv_data = connection_socket.recv(BYTES_TO_READ)
-                        print(recv_data)
+                        # print(recv_data)
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         key.data.inb += recv_data
                         if not recv_data or EOF_BYTE in recv_data:
@@ -47,7 +49,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             break
 
                     if not recv_data or EOF_BYTE in recv_data:
-                        # key.data.inb = key.data.inb.rstrip(EOF_BYTE)
 
                         # Server
                         if key.data.inb.startswith(UPDATE_CHECK_REQUEST):
@@ -74,6 +75,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb.startswith(UPDATE_READY):
                             print("Client is ready to receive the update.")
                             response_data["update_readiness"] = True
+                            print("Preparing update file ...")
                             update_file, _ = get_update_file()
                             key.data.outb = update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
@@ -95,7 +97,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Client
                         elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
                             print("Update readiness request received.")
-                            update_readiness, update_readiness_bytes, _ = check_update_readiness()
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness(key.data.update_readiness)
                             if update_readiness:
                                 print("Client is ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
@@ -107,9 +109,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
                         # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
                         elif (EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
-                            file_data = key.data.inb.rstrip(EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE)
+                            print(key.data.inb)
+                            suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
+                            file_data = key.data.inb.removesuffix(suffix) # Remove end of file bytes
                             print(f"File data: {file_data}")
-                            new_file_name = 'received_file.png'
+                            new_file_name = 'file..png'
                             with open(new_file_name, 'wb') as file:
                                 file.write(file_data)
                             print(f"File reconstructed and written to {new_file_name}.")
@@ -122,6 +126,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print(f"No data received from {remote_host}:{remote_port}.")
                         else:
                             print("ELSE")
+
                         key.data.inb = b''  # Clear the input buffer
 
                     if (not recv_data or EOF_BYTE in recv_data) and not key.data.outb: # If connection has no data to send and the server has nothing to send, close the connection
@@ -133,12 +138,12 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Write events
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
-                        print(f"Sending data to {remote_host}:{remote_port} ...")
+                        print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
                         key.data.outb += EOF_BYTE
                         while key.data.outb:
                             sent = connection_socket.send(key.data.outb)
                             key.data.outb = key.data.outb[sent:]
-                        print(key.data.outb)
+                        # print(key.data.outb)
                         print("Data sent.")
 
     except Exception as e:

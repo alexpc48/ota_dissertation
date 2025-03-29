@@ -10,10 +10,13 @@ import errno
 from constants import *
 from functions import *
 
+# Global variables
+update_readiness = False # Default to false
+
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
-    print("-------------------------------------------------------------------------------------------")
+    print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
     print("1. Check for an update") # Checks the server for an update it
@@ -28,7 +31,7 @@ def options_menu() -> int:
     print("99. Exit")
     print("-------------------------------------------------------------------------------------------")
 
-    return int(input("Enter an option: "))
+    return input("Enter an option: ")
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
 def menu_thread() -> None:
@@ -37,17 +40,32 @@ def menu_thread() -> None:
             option = options_menu()
             if option:
                 match option:
-                    case 1: # Request update from the server
+                    case '1': # Request update from the server
                         print("Checking for updates ...")
                         _, _ = check_for_update(server_host, server_port)
-                    case 2: # Download updates from the server
+                    case '2': # Download updates from the server
                         print("Downloading updates ...")
                         ret_val = download_update(server_host, server_port)
                         if ret_val == UPDATE_NOT_AVALIABLE:
                             print("No updates available to download.")
-                    case 98: # Redisplay the options menu
+                    case '10': # Change the update readiness status
+                        global update_readiness
+                        print(f"Readiness status currently: {update_readiness}")
+                        update_readiness_change_value = str(input("Enter new readiness status (True/False): "))
+                        if update_readiness_change_value == str(update_readiness):
+                            print(f"Update readiness status is already set to {update_readiness}.")
+                        elif update_readiness_change_value in ['True', 'False']: # Check if the input is valid
+                            print("Changing update readiness status ...")
+                            ret_val = change_update_readiness(update_readiness_change_value)
+                            if ret_val == SUCCESS:
+                                print("Update readiness status changed successfully.")
+                            else:
+                                print("Failed to change update readiness status")
+                        else:
+                            print("Invalid update readiness status.")
+                    case '98': # Redisplay the options menu
                         continue
-                    case 99: # Exit the program
+                    case '99': # Exit the program
                         print("Exiting ...")
                         break
                     case _:
@@ -79,6 +97,21 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         print(f"An error occurred: {e}")
         return LISTENING_SOCKET_CREATION_ERROR
     
+# Change the update readiness status of the client
+def change_update_readiness(update_readiness_change_value: str) -> int:
+    global update_readiness
+    try:
+        if update_readiness_change_value == 'True':
+            update_readiness_change_value_bool = True
+        elif update_readiness_change_value == 'False':
+            update_readiness_change_value_bool = False
+        update_readiness = update_readiness_change_value_bool
+        print(f"Update readiness status changed to {update_readiness}.")
+        return SUCCESS
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR
+
 # Funtion accepts new connections and registers them with the selector
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
@@ -88,7 +121,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket.setblocking(False)
 
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=address, inb=b"", outb=b"")
+        global update_readiness
+        data = types.SimpleNamespace(address=address, inb=b"", outb=b"", update_readiness=update_readiness)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
