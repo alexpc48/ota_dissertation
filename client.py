@@ -47,6 +47,8 @@ def menu_thread() -> None:
                         ret_val = download_update(server_host, server_port)
                         if ret_val == UPDATE_NOT_AVALIABLE:
                             print("No updates available to download.")
+                        elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                            print("Client is not ready to receive the update.")
                     case '10': # Change the update readiness status
                         print("Changing update readiness status ...")
                         ret_val = change_update_readiness()
@@ -121,8 +123,6 @@ def change_update_readiness() -> int:
             update_readiness_status = int(True)
         elif update_readiness_change_value == 'False':
             update_readiness_status = int(False)
-
-        print(update_readiness_status)
         
         cursor.execute("UPDATE update_information SET update_readiness_status = ? WHERE update_entry_id = 1", (update_readiness_status,))
         db_connection.commit()
@@ -250,6 +250,18 @@ def download_update(server_host: str, server_port: int) -> int:
         return UPDATE_NOT_AVALIABLE
     
     try:
+        print("Checking if the client is ready to receive the update ...")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        update_readiness_status = bool((cursor.execute("SELECT update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()[0])
+        
+        print(f"Readiness status currently: {update_readiness_status}")
+
+        if update_readiness_status == False:
+            print("Client is not ready to receive the update.")
+            db_connection.close()
+            return CLIENT_NOT_UPDATE_READY_ERROR
+
         print(f"Initiating connection to {server_host}:{server_port} ...")
 
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

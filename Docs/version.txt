@@ -1,2 +1,2 @@
-v1.23
-Fixed connection hanging issue if there was no remote
+v1.24
+Added client side checking before downloading an update
