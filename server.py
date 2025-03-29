@@ -6,7 +6,6 @@ import threading
 import os
 import types
 import errno
-import typing
 
 from constants import *
 from functions import *
@@ -14,9 +13,15 @@ from functions import *
 # FUNCTIONS
 # Function to display the options menu
 def options_menu() -> int:
+    print("-------------------------------------------------------------------------------------------")
     print("Options:")
-    print("1. Push and update")
+    print("-------------------------------------------------------------------------------------------")
+    print("1. Push an update to the client")
+    print("-------------------------------------------------------------------------------------------")
+    print("98. Redisplay the options menu") # Redisplays the options menu
     print("99. Exit")
+    print("-------------------------------------------------------------------------------------------")
+
     return int(input("Enter an option: "))
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
@@ -28,7 +33,11 @@ def menu_thread() -> None:
                 match option:
                     case 1: # Request update from the server
                         print("Pushing update ...")
-                        push_update(client_host, client_port)
+                        ret_val = push_update(client_host, client_port)
+                        if ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                            print("Client is not ready to receive the update.")
+                    case 98: # Redisplay the options menu
+                        continue
                     case 99: # Exit the program
                         print("Exiting ...")
                         break
@@ -114,7 +123,10 @@ def push_update(client_host: str, client_port: int) -> int:
         # *** Written with the help of AI ***
         # Wait for the connection to complete (blocks all other operations)
         while not data.connected:
-            events = selector.select(timeout=10)  # Wait 10 seconds until timeout of connection
+            # FIXME: Timeout doesnt work
+            # The program errors and doenst work even when the client does come up
+            # Not urgent for now (out of scope) but does need fixing
+            events = selector.select(timeout=10)
             for key, mask in events:
                 # Check for write event (TCP socket enters write event after successfull connection)
                 if mask & selectors.EVENT_WRITE:
@@ -128,20 +140,45 @@ def push_update(client_host: str, client_port: int) -> int:
                         print(f"Connection to {client_host}:{client_port} failed with error: {errno.errorcode[err]}\n")
                         selector.unregister(connection_socket)
                         return CONNECTION_INITIATE_ERROR
-                    
+
+        print('Preparing data to send ...')
+        data.outb = UPDATE_READINESS_REQUEST
+        print('Data ready to send.')
+
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return CONNECTION_SERVICE_ERROR
+        
+        if response_data.get("update_readiness"):
+            print("Client is ready to receive the update.")
+        elif not response_data.get("update_readiness"):
+            print("Client is not ready to receive the update.")
+            return CLIENT_NOT_UPDATE_READY_ERROR
+
         print('Preparing data to send ...')
         data.outb, _ = get_update_file()
         print('Data ready to send.')
+
+        # TODO: Just sends the data and doesnt check if the client can receive it yet.
+        # Need to add check to ask client if they can receive the data or not, and if not then check back later to see if they are.
+
+        # Wait for the response to be processed by service_connection
+        response_event.clear()
+        response_event.wait(timeout=10)  # Wait for up to 10 seconds
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return CONNECTION_SERVICE_ERROR
+        
+        response_data.clear()  # Clear the response data for the next request
+        print("Pushed update successfully.")
         return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
         return CONNECTION_INITIATE_ERROR
 
-# Get update file
-def get_update_file() -> typing.Tuple[bytes, int]:
-    file = b'I am an update file'
-    return file, SUCCESS
 
 
 
@@ -177,7 +214,9 @@ if __name__=='__main__':
     listen_thread = threading.Thread(target=listen, daemon=False, args=(selector,))
 
     # Servicing loop
-    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector,))
+    response_event = threading.Event()
+    response_data = {}
+    service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data))
 
     # Start the threads
     options_menu_thread.start()
