@@ -1,3 +1,2 @@
-v1.21
-Switching branch for database integration
-Merging into main and will come back to completing options menu
+v1.24
+Added client side checking before downloading an update

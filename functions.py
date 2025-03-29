@@ -2,6 +2,7 @@ import selectors
 import threading
 import typing
 import re
+import sqlite3
 
 from constants import *
 
@@ -13,22 +14,27 @@ def check_for_update() -> int:
     return update_available, update_available_bytes, SUCCESS
 
 # Get update file
+# Latest update file will be most recent database addition
 def get_update_file() -> typing.Tuple[bytes, int]:
-    file_name = b'Updates\\update_file_v01.00.01.png' # TODO: Implement properly for database (for now, using folders)
-    with open(file_name, 'rb') as file:
-        file_data = file.read()
-    return file_name, file_data, SUCCESS
+    db_connection = sqlite3.connect("server_ota_updates.db")
+    cursor = db_connection.cursor()
+    update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
+    db_connection.close()
+    return update_version, update_file, SUCCESS
 
 # Client checks if it is ready to receive the update
-def check_update_readiness(update_readiness: bool) -> int:
-    if update_readiness == True:
+def check_update_readiness(database) -> int:
+    db_connection = sqlite3.connect(database)
+    cursor = db_connection.cursor()
+    update_readiness_status = bool((cursor.execute("SELECT update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()[0])
+    if update_readiness_status == True:
         update_readiness_bytes = UPDATE_READY
-    elif update_readiness == False:
+    elif update_readiness_status == False:
         update_readiness_bytes = UPDATE_NOT_READY
-    return update_readiness, update_readiness_bytes, SUCCESS
+    return update_readiness_status, update_readiness_bytes, SUCCESS
 
 # Service the current active connections (shared function with server and client - TODO: Needs seperating)
-def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict, database) -> int:
     try:
         while True:
             events = selector.select(timeout=1)
@@ -65,8 +71,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb.startswith(UPDATE_DOWNLOAD_REQUEST):
                             print("Update download request received.")
                             print("Preparing update file ...")
-                            update_file_name, update_file, _ = get_update_file()
-                            key.data.outb = update_file_name + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
+                            update_version, update_file, _ = get_update_file()
+                            # https://chatgpt.com/share/67e81027-c6bc-800e-adbc-2086ecf38797 Change to use this method
+                            key.data.outb = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
                         # Server
                         elif key.data.inb.startswith(FILE_RECEIVED):
@@ -77,8 +84,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Client is ready to receive the update.")
                             response_data["update_readiness"] = True
                             print("Preparing update file ...")
-                            update_file_name, update_file, _ = get_update_file()
-                            key.data.outb = update_file_name + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
+                            update_version, update_file, _ = get_update_file()
+                            key.data.outb = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
                         # Server
                         elif key.data.inb.startswith(UPDATE_NOT_READY):
@@ -98,11 +105,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Client
                         elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
                             print("Update readiness request received.")
-                            update_readiness, update_readiness_bytes, _ = check_update_readiness(key.data.update_readiness)
-                            if update_readiness:
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness(database)
+                            if update_readiness == True:
                                 print("Client is ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
-                            else:
+                            elif update_readiness == False:
                                 print("Client is not ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
 
@@ -116,16 +123,16 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             header = re.match(pattern, key.data.inb)
                             print(header)
                             prefix = header.group(0)
-                            file_name = b'Updates\\client_' + header.group(1).removeprefix(b'Updates\\')
-                            print(file_name)
+                            update_file_name = (header.group(1)).decode()
+                            print(update_file_name)
                             suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
                             file_data = key.data.inb.removeprefix(prefix) # Remove header bytes
                             file_data = file_data.removesuffix(suffix) # Remove end of file bytes
 
                             print(f"File data: {file_data}")
-                            with open(file_name, 'wb') as file:
+                            with open(update_file_name, 'wb') as file:
                                 file.write(file_data)
-                            print(f"File reconstructed and written to {file_name}.")
+                            print(f"File reconstructed and written to {update_file_name}.")
                             print("File receive check request received.")
                             print("Sending confirmation to server ...")
                             key.data.outb = FILE_RECEIVED
