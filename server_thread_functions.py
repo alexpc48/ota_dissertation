@@ -10,32 +10,32 @@ from server_functions import *
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
     try:
         while True:
-            if option := options_menu() is not None:
-                match option:
-                
-                    case '1': # Push the latest update to the client
-                        print("Pushing the latest update to the client ...")
-                        ret_val = push_update(selector, response_event, response_data)
-                        if ret_val == SUCCESS:
-                            print("Update pushed successfully.")
-                        elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
-                            print("Error: Client is not ready to receive the update.")
-                        elif ret_val == CONNECTION_INITIATE_ERROR:
-                            print("Error: Connection initiation failed.")
-                        else:
-                            print("An error occurred while pushing the update.")
-                            print("Please check the logs for more details.")
+            option = options_menu()
+            match option:
+            
+                case '1': # Push the latest update to the client
+                    print("Pushing the latest update to the client ...")
+                    ret_val = push_update(selector, response_event, response_data)
+                    if ret_val == SUCCESS:
+                        print("Update pushed successfully.")
+                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                        print("Error: Client is not ready to receive the update.")
+                    elif ret_val == CONNECTION_INITIATE_ERROR:
+                        print("Error: Connection initiation failed.")
+                    else:
+                        print("An error occurred while pushing the update.")
+                        print("Please check the logs for more details.")
 
-                    case '98': # Redisplay the options menu
-                        continue
+                case '98': # Redisplay the options menu
+                    continue
 
-                    case '99': # Exit the program
-                        print("Exiting ...")
-                        # TODO: Implement proper graceful exit
-                        os._exit(SUCCESS)
+                case '99': # Exit the program
+                    print("Exiting ...")
+                    # TODO: Implement proper graceful exit
+                    os._exit(SUCCESS)
 
-                    case _:
-                        print(f"Invalid option '{option}' entered.")
+                case _:
+                    print(f"Invalid option '{option}' entered.")
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -66,7 +66,7 @@ def listen(selector: selectors.SelectSelector) -> None:
         # TODO: Implement proper graceful exit
         os._exit(LISTENING_ERROR)
 
-def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict, database) -> int:
+def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         while True:
             # Get list of events from the selector

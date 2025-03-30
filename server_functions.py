@@ -85,6 +85,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         
         # Waits for the connection to complete (blocks all other operations)
         connection_attempts = 0
+        time.sleep(5) # Wait for 5 seconds before trying to connect to the client
         while not data.connected:
             err = connection_socket.connect_ex((host, port)) # Try connecting to the client
             print("[SYN]")
