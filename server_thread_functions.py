@@ -3,7 +3,6 @@
 # Libraries
 import selectors
 import os
-import random
 from constants import *
 from server_functions import *
 
@@ -36,6 +35,10 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case _:
                     print(f"Invalid option '{option}' entered.")
+
+    except KeyboardInterrupt:
+        print("Exiting due to keyboard interrupt ...")
+        os._exit(KEYBOARD_INTERRUPT)
 
     except Exception as e:
         print(f"An error occurred: {e}")

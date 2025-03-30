@@ -1,140 +1,167 @@
-# Libraries
-import socket
-import selectors
-import types
-import typing
-import errno
+# import selectors
+# import threading
+# import typing
+# import re
+# import sqlite3
 
-from constants import *
+# from constants import *
 
-def options_menu() -> int:
-    print("Options:")
-    print("1. Send a message")
-    print("99. Exit")
-    return int(input("Enter an option: "))
+# # Check if there is an update
+# # TODO: Implement properly for database
+# def check_for_update() -> int:
+#     update_available = True
+#     update_available_bytes = UPDATE_AVALIABLE
+#     return update_available, update_available_bytes, SUCCESS
 
-# Funtion accepts new connections from clients and registers them with the selector
-def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
-    try:
-        # Get socket information
-        connection_socket, client_address = socket.accept()
-        print(f"Accepted connection from {client_address[0]}:{client_address[1]} ...")
+# # Get update file
+# # Latest update file will be most recent database addition
+# def get_update_file() -> typing.Tuple[bytes, int]:
+#     db_connection = sqlite3.connect("server_ota_updates.db")
+#     cursor = db_connection.cursor()
+#     update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
+#     db_connection.close()
+#     return update_version, update_file, SUCCESS
 
-        connection_socket.setblocking(False)
+# # Client checks if it is ready to receive the update
+# def check_update_readiness(database) -> int:
+#     db_connection = sqlite3.connect(database)
+#     cursor = db_connection.cursor()
+#     update_readiness_status = bool((cursor.execute("SELECT update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()[0])
+#     if update_readiness_status == True:
+#         update_readiness_bytes = UPDATE_READY
+#     elif update_readiness_status == False:
+#         update_readiness_bytes = UPDATE_NOT_READY
+#     return update_readiness_status, update_readiness_bytes, SUCCESS
 
-        # Register the connection with the selector
-        data = types.SimpleNamespace(address=client_address, inb=b"", outb=b"") # Fast way to create struct-like objects
-        events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        selector.register(connection_socket, events, data=data)
+# # Service the current active connections (shared function with server and client - TODO: Needs seperating)
+# def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict, database) -> int:
+#     try:
+#         while True:
+#             events = selector.select(timeout=1)
+#             for key, mask in events:
+#                 # Service active socket connections, not the listening socket
+#                 if key.data == "listening_socket":
+#                     continue
+#                 connection_socket = key.fileobj
+#                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
+#                 # Read events
+#                 if mask & selectors.EVENT_READ:
+#                     while True:
+#                         recv_data = connection_socket.recv(BYTES_TO_READ)
+#                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+#                         key.data.inb += recv_data
+#                         if not recv_data or EOF_BYTE in recv_data:
+#                             print(f"Data {key.data.inb} from {remote_host}:{remote_port} received.")
+#                             break
 
-        return SUCCESS
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return CONNECTION_ACCEPT_ERROR
+#                     if not recv_data or EOF_BYTE in recv_data:
 
-# Funtion initiates a connection to the server
-def initiate_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[socket.socket, int]:
-    try:
-        print(f"Initiating connection to {host}:{port} ...")
-       
-        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection_socket.setblocking(False)
-        connection_socket.connect_ex((host, port)) # Connect to the server address
+#                         # Server
+#                         if key.data.inb.startswith(UPDATE_CHECK_REQUEST):
+#                             print("Update check request received.\nChecking for updates ...")
+#                             update_available, update_available_bytes, _ = check_for_update()
+#                             if update_available:
+#                                 print("Update available for client.")
+#                                 key.data.outb = update_available_bytes
+#                             else:
+#                                 print("No updates available for client.")
+#                                 key.data.outb = update_available_bytes
 
-        events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False) # Server address
-        selector.register(connection_socket, events, data=data)
+#                         # Server
+#                         elif key.data.inb.startswith(UPDATE_DOWNLOAD_REQUEST):
+#                             print("Update download request received.")
+#                             print("Preparing update file ...")
+#                             update_version, update_file, _ = get_update_file()
+#                             # https://chatgpt.com/share/67e81027-c6bc-800e-adbc-2086ecf38797 Change to use this method
+#                             key.data.outb = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
-        # *** Written with the help of AI ***
-        # Wait for the connection to complete (blocks all other operations)
-        while not data.connected:
-            events = selector.select(timeout=5)  # Wait 5 seconds until timeout
-            for key, mask in events:
-                if mask & selectors.EVENT_WRITE:
-                    # Check if the connection was successful
-                    err = connection_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                    if err == 0:
-                        print(f"Connection to {host}:{port} successful.")
-                        data.connected = True
-                        return connection_socket, SUCCESS
-                    else:
-                        print(f"Connection to {host}:{port} failed with error: {errno.errorcode[err]}")
-                        selector.unregister(connection_socket)
-                        return None, CONNECTION_INITIATE_ERROR
+#                         # Server
+#                         elif key.data.inb.startswith(FILE_RECEIVED):
+#                             print("File received by the client.")
+                        
+#                         # Server
+#                         elif key.data.inb.startswith(UPDATE_READY):
+#                             print("Client is ready to receive the update.")
+#                             response_data["update_readiness"] = True
+#                             print("Preparing update file ...")
+#                             update_version, update_file, _ = get_update_file()
+#                             key.data.outb = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
 
-        return connection_socket, SUCCESS
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None, CONNECTION_INITIATE_ERROR
+#                         # Server
+#                         elif key.data.inb.startswith(UPDATE_NOT_READY):
+#                             print("Client is not ready to receive the update.")
+#                             response_data["update_readiness"] = False
 
-# Function closes the connection to the server
-def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
+#                         #Client
+#                         elif key.data.inb.startswith(UPDATE_AVALIABLE):
+#                             print("There is an update available.")
+#                             response_data["update_available"] = True
+                            
+#                         # Client
+#                         elif key.data.inb.startswith(UPDATE_NOT_AVALIABLE):
+#                             print("There is no update available.")
+#                             response_data["update_available"] = False
 
-    try:
-        print(f"Closing connection to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]}...")
-        
-        selector.unregister(connection_socket)
-        connection_socket.close()
-        
-        return SUCCESS
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return CONNECTION_CLOSE_ERROR
-    
-# Function services current registered connections with their corresponding events
-def service_current_connection(key: selectors.SelectorKey, mask: int, selector: selectors.SelectSelector, data_to_send) -> int:
-    try:
-        connection_socket = key.fileobj
+#                         # Client
+#                         elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
+#                             print("Update readiness request received.")
+#                             update_readiness, update_readiness_bytes, _ = check_update_readiness(database)
+#                             if update_readiness == True:
+#                                 print("Client is ready to receive the update.")
+#                                 key.data.outb = update_readiness_bytes
+#                             elif update_readiness == False:
+#                                 print("Client is not ready to receive the update.")
+#                                 key.data.outb = update_readiness_bytes
 
-        # Service events
-        # Read events
-        if mask & selectors.EVENT_READ:
-            # print("Reading")
-            recv_data = connection_socket.recv(1024)
-            if recv_data:
-                print(f"Receiving data from {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                key.data.inb += recv_data
-                if b"EOF" in key.data.inb:
-                    print(f"Data {key.data.inb} received.")
-                    return close_connection(connection_socket, selector)
-            if not recv_data and not data_to_send:
-                return close_connection(connection_socket, selector)
-        # Write events
-        if mask & selectors.EVENT_WRITE:
-            # print("Writing")
-            if not key.data.outb and data_to_send:
-                key.data.outb = data_to_send
-                data_to_send = None
-            if key.data.outb:
-                print(f"Sending data to {connection_socket.getpeername()[0]}:{connection_socket.getpeername()[1]} ...")
-                sent = connection_socket.sendall(key.data.outb)
-                key.data.outb = key.data.outb[sent:]
-                return SUCCESS
-            if not key.data.outb and not data_to_send:
-                pass
-                
+#                         # Client
+#                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
+#                         # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
+#                         elif (EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
+#                             print(key.data.inb)
+#                             # AI for pattern matching
+#                             pattern = rb'^(.*?)' + re.escape(FILE_HEADER_SECTION_END)
+#                             header = re.match(pattern, key.data.inb)
+#                             print(header)
+#                             prefix = header.group(0)
+#                             update_file_name = (header.group(1)).decode()
+#                             print(update_file_name)
+#                             suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
+#                             file_data = key.data.inb.removeprefix(prefix) # Remove header bytes
+#                             file_data = file_data.removesuffix(suffix) # Remove end of file bytes
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return CONNECTION_SERVICE_ERROR
-    
-# Create an IPv4 listening socket
-def create_listening_socket(host: str, port: int, selector: selectors.SelectSelector) -> int:
-    try:
-        listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listening_socket.bind((host, port))
-        listening_socket.listen()
-        print(f"Listening on {host}:{port} ...")
-        listening_socket.setblocking(False)
+#                             print(f"File data: {file_data}")
+#                             with open(update_file_name, 'wb') as file:
+#                                 file.write(file_data)
+#                             print(f"File reconstructed and written to {update_file_name}.")
+#                             print("File receive check request received.")
+#                             print("Sending confirmation to server ...")
+#                             key.data.outb = FILE_RECEIVED
 
-        # Register the listening socket with the selector
-        selector.register(listening_socket, selectors.EVENT_READ, data="listening_socket")
+#                         # Server and client
+#                         elif key.data.inb.startswith(b''):
+#                             print(f"No data received from {remote_host}:{remote_port}.")
+#                         else:
+#                             print("ELSE")
 
-        return SUCCESS
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return LISTENING_SOCKET_CREATION_ERROR
+#                         key.data.inb = b''  # Clear the input buffer
+
+#                     if (not recv_data or EOF_BYTE in recv_data) and not key.data.outb: # If connection has no data to send and the server has nothing to send, close the connection
+#                         selector.unregister(connection_socket)
+#                         print('Socket unregistered from the selector.')
+#                         connection_socket.close()
+#                         print(f'Connection with {remote_host}:{remote_port} closed.')
+#                         response_event.set() # Set completion flag for the connection
+#                 # Write events
+#                 if mask & selectors.EVENT_WRITE:
+#                     if key.data.outb:
+#                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
+#                         key.data.outb += EOF_BYTE
+#                         while key.data.outb:
+#                             sent = connection_socket.send(key.data.outb)
+#                             key.data.outb = key.data.outb[sent:]
+#                         # print(key.data.outb)
+#                         print("Data sent.")
+
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         return CONNECTION_SERVICE_ERROR

@@ -3,7 +3,7 @@ from server_functions import *
 from server_thread_functions import *
 
 # Main program
-# Usage: python3 server.py <local_host> <local_port> <database>
+# Usage: python3 server.py <local_host> <local_port>
 if __name__=='__main__':
     # Create a selector object
     selector = selectors.DefaultSelector()
