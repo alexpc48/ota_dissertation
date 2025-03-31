@@ -120,6 +120,7 @@ def change_update_readiness() -> int:
         print(f"An error occurred: {e}")
         return ERROR
 
+# TODO: Store the value in the database and have it so the server can say there is a new update and the client updates its database
 def check_for_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
     try:
         database, ret_val = get_client_database()
@@ -206,6 +207,8 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             print("No update available to download.")
             return UPDATE_NOT_AVALIABLE
         
+        # TODO: Remove this from downloading section and add it to the installation function instead
+        # So, when an update is downloaded that is fine but when it is installed, check first if it can be or not
         update_readiness_status, _, ret_val = check_update_readiness_status()
         if ret_val == SUCCESS:
             print(f"Readiness status currently: {update_readiness_status}")

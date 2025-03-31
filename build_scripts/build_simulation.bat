@@ -18,9 +18,11 @@ DEL /Q client_linux_ota_updates.db
 DEL /Q client_windows_ota_updates.db
 
 REM Setup new databases
+ECHO Setting up new databases...
 CALL python %helpers_dir%\setup_db.py
 
 REM Build executables
+ECHO Building executables...
 CALL pyinstaller --onefile --name client --distpath "%root_dir%" client.py
 CALL pyinstaller --onefile --name server --distpath "%root_dir%" server.py
 
