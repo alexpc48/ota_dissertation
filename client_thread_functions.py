@@ -15,11 +15,11 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
             option = options_menu()
             match option:
 
-                case '1': # Request update from the server
+                case '1': # Request update check from the server
                     print("Checking the server for updates ...")
-                    ret_val = check_for_update(selector, response_event, response_data)
+                    _, ret_val = check_for_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
-                        print("Update pushed successfully.")
+                        print("There is a new update.")
                     elif ret_val == NO_UPDATE_ERROR:
                         print("Error: There is no new udpate.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
@@ -47,7 +47,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occured while changing the update readiness status.")
                         print("Please check the logs for more details.")
 
-                case '20':
+                case '20': # Check the update readiness
                     print("Displaying the update readiness status ...")
                     ret_val = check_update_readiness_status(selector, response_event, response_data)
                     if ret_val == SUCCESS:
@@ -58,7 +58,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case '21':
                     print("Displaying the update version ...")
-                    update_version, ret_val = get_update_version(selector, response_event, response_data)
+                    update_version, ret_val = get_update_version()
                     if ret_val == SUCCESS:
                         print(f"Update version: {update_version}")
                         print("Update version checked successfully.")
@@ -110,7 +110,6 @@ def listen(selector: selectors.SelectSelector) -> None:
         # TODO: Implement proper graceful exit
         os._exit(LISTENING_ERROR)
 
-# Service the current active connections (shared function with server and client - TODO: Needs seperating)
 def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict,) -> int:
     try:
         while True:
@@ -148,7 +147,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
                             print("Update readiness request received.")
-                            update_readiness, update_readiness_bytes, _ = check_update_readiness()
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness_status()
                             if update_readiness == True:
                                 print("Client is ready to receive the update.")
                                 key.data.outb = update_readiness_bytes

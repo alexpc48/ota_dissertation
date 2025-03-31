@@ -121,4 +121,4 @@ def get_update_file() -> typing.Tuple[bytes, int]:
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return ERROR
+        return b'', ERROR

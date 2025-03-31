@@ -100,7 +100,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 # Try up to 5 times to connect to the client
                 if connection_attempts > 5:
                     print("Connection attempts exceeded. Exiting ...")
-                    return CONNECTION_INITIATE_ERROR
+                    return None, None, CONNECTION_INITIATE_ERROR
                 print("Trying again ...")
                 time.sleep(5)
                 connection_attempts += 1
@@ -108,7 +108,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
             else:
                 print(f"Connection to {host}:{port} failed with error: {errno.errorcode[err]}\n")
                 print("Please check the host and port details.")
-                return CONNECTION_INITIATE_ERROR
+                return None, None, CONNECTION_INITIATE_ERROR
 
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
@@ -119,4 +119,4 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
     except Exception as e:
         print(f"An error occurred: {e}")
         _ = close_connection(connection_socket, selector)
-        return _, CONNECTION_INITIATE_ERROR
+        return None, None, CONNECTION_INITIATE_ERROR
