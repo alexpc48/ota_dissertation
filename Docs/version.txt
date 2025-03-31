@@ -1,4 +1,5 @@
-v1.25
-Split up client and server into functions
-Added local network information to the databases (i.e., listening ip and port)
-Added build and run scripts
+v1.26
+Updates now downloaded and stored in the database
+Removed the update readiness status check from update downloads (not needed)
+Added install option
+Added extra update queue to the client databases
