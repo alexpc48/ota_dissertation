@@ -85,10 +85,26 @@ if __name__=='__main__':
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.3.png', file_data))
+    file_data, _ = get_update_file('updates\\bugs_bunny.jpg')
+    cursor.execute('''INSERT INTO updates (update_version, update_file)
+                    VALUES (?, ?)''',
+                    ('1.0.4.jpg', file_data))
 
     db_connection.commit()
     db_connection.close()
     print("Server database setup complete.")
+
+
+
+
+
+
+
+
+
+
+
+
 
     print("Setting up client Windows database ...")
     db_connection = sqlite3.connect("client_windows_ota_updates.db")
@@ -108,6 +124,12 @@ if __name__=='__main__':
                     update_readiness_status BOOLEAN
                     )''')
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS update_downloads (
+                    download_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    update_version TEXT,
+                    update_file BLOB
+                    )''')
+    
     print("Adding data to the Windows client database ...")
     cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port)
                     VALUES (?, ?, ?, ?)''',
@@ -121,7 +143,19 @@ if __name__=='__main__':
     db_connection.commit()
     db_connection.close()
     print("Windows client database setup complete.")
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
     print("Setting up client Linux database ...")
     db_connection = sqlite3.connect("client_linux_ota_updates.db")
     cursor = db_connection.cursor()
@@ -138,6 +172,12 @@ if __name__=='__main__':
                     update_version TEXT,
                     update_file BLOB,
                     update_readiness_status BOOLEAN
+                    )''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS update_downloads (
+                    download_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    update_version TEXT,
+                    update_file BLOB
                     )''')
 
     print("Adding data to the Linux database ...")

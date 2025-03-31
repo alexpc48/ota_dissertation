@@ -202,20 +202,6 @@ def check_update_readiness_status() -> typing.Tuple[bool, bytes, int]:
 # TODO: Needs to check if the update is not already installed or not (i.e., compare version number)
 def download_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        update_available, _ = check_for_update(selector, response_event, response_data)
-        if update_available == False:
-            print("No update available to download.")
-            return UPDATE_NOT_AVALIABLE
-        
-        # TODO: Remove this from downloading section and add it to the installation function instead
-        # So, when an update is downloaded that is fine but when it is installed, check first if it can be or not
-        update_readiness_status, _, ret_val = check_update_readiness_status()
-        if ret_val == SUCCESS:
-            print(f"Readiness status currently: {update_readiness_status}")
-            if update_readiness_status == False:
-                print("Client is not ready to receive the update.")
-                return CLIENT_NOT_UPDATE_READY_ERROR
-
         database, ret_val = get_client_database()
         if ret_val == SUCCESS:
             print("Database name retrieved successfully.")
@@ -227,13 +213,26 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         # Get the server IP and port from the database
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
+
+        # Check if there is already an update queued for download
+        result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
+        if result[0]:
+            print("An update is already queued for download.")
+            db_connection.close()
+            return QUEUED_UPDATE_ERROR
+        
         result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
         db_connection.close()
         server_host, server_port = result[0], result[1]
 
+        update_available, _ = check_for_update(selector, response_event, response_data)
+        if update_available == False:
+            print("No update available to download.")
+            return UPDATE_NOT_AVALIABLE
+
         selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
         if ret_val == SUCCESS:
-            print("Connection to client established.")
+            print("Connection to server established.")
         elif ret_val == CONNECTION_INITIATE_ERROR:
             print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
@@ -242,7 +241,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             return ERROR        
 
         key = selector.get_key(connection_socket)
-
+        
         print('Preparing data to send ...')
         key.data.outb = UPDATE_DOWNLOAD_REQUEST
         print('Data ready to send.')
@@ -269,7 +268,7 @@ def get_update_version() -> typing.Tuple[str, int]:
         else:
             print("An error occurred while retrieving the database name.")
             print("Please check the logs for more details.")
-            return 'hi', ERROR
+            return '', ERROR
         
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
@@ -281,3 +280,85 @@ def get_update_version() -> typing.Tuple[str, int]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return '', ERROR
+    
+def write_update_file_to_database(update_file_name: str, file_data: bytes) -> int:
+    try:      
+        print(f"File data: {file_data}")
+        database, ret_val = get_client_database()
+        if ret_val == SUCCESS:
+            print("Database name retrieved successfully.")
+        else:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        cursor.execute('''INSERT INTO update_downloads (update_version, update_file)
+                    VALUES (?, ?)''',
+                    (update_file_name, file_data))
+        db_connection.commit()
+        db_connection.close()
+        return SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return DOWNLOAD_UPDATE_ERROR
+    
+def install_update() -> int:
+    try:
+        # Check if ready to install the update
+        update_readiness_status, _, ret_val = check_update_readiness_status()
+        if ret_val == SUCCESS:
+            print(f"Readiness status currently: {update_readiness_status}")
+            if update_readiness_status == False:
+                print("Client is not ready to receive the update.")
+                return CLIENT_NOT_UPDATE_READY_ERROR
+            
+        database, ret_val = get_client_database()
+        if ret_val == SUCCESS:
+            print("Database name retrieved successfully.")
+        else:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return '', ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+
+        # Check if there is an update queued for download
+        result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
+        if not result[0]: # No update
+            print("There is no update available for install.")
+            db_connection.close()
+            return UPDATE_NOT_AVALIABLE_ERROR
+        
+        result = (cursor.execute("SELECT update_version, update_file FROM update_downloads")).fetchone()
+        update_file_name = result[0]
+        file_data = result[1]
+
+        file_path = os.path.join("install_location", update_file_name)
+
+        print(file_path)
+
+        with open(file_path, 'wb') as file:
+            file.write(file_data)
+        print(f"File {update_file_name} installed successfully.")
+
+        result = cursor.execute("DELETE FROM update_downloads")
+        db_connection.commit()
+        print("Update file removed from the download queue.")
+
+
+        print(update_file_name)
+        cursor.execute("UPDATE update_information SET update_version = ? WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed
+        db_connection.commit()
+        db_connection.close()
+        print("Update version updated in the database.")
+        
+        print("Update installed successfully.")
+        return SUCCESS
+            
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return UPDATE_INSTALL_ERROR

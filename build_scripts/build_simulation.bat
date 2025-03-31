@@ -21,9 +21,16 @@ REM Setup new databases
 ECHO Setting up new databases...
 CALL python %helpers_dir%\setup_db.py
 
+REM Create update installation path
+IF NOT EXIST "%root_dir%\install_location" (
+    ECHO Creating update installation path...
+    MKDIR "%root_dir%\install_location"
+)
+
 REM Build executables
 ECHO Building executables...
 CALL pyinstaller --onefile --name client --distpath "%root_dir%" client.py
 CALL pyinstaller --onefile --name server --distpath "%root_dir%" server.py
 
+ECHO Build complete.
 CD %build_scripts_dir%

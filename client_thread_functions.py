@@ -25,16 +25,38 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
-                        print("An error occurred while pushing the update.")
+                        print("An error occurred.")
                         print("Please check the logs for more details.")
 
                 case '2': # Download updates from the server
                     print("Downloading updates from the server ...")
                     ret_val = download_update(selector, response_event, response_data)
-                    if ret_val == UPDATE_NOT_AVALIABLE:
+                    if ret_val == SUCCESS:
+                        print("Update downloaded successfully.")
+                    elif ret_val == UPDATE_NOT_AVALIABLE:
                         print("Error: No updates available to download.")
                     elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
                         print("Error: Client is not ready to receive the update.")
+                    elif ret_val == QUEUED_UPDATE_ERROR:
+                        print("Error: There is an update already queued for install.")
+                    else:
+                        print("An error occurred.")
+                        print("Please check the logs for more details.")
+
+                case '3': # Install the update
+                    print("Installing the update ...")
+                    ret_val = install_update()
+                    if ret_val == SUCCESS:
+                        print("Update installed successfully.")
+                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                        print("Error: Client is not ready to receive the update.")
+                    elif ret_val == UPDATE_NOT_AVALIABLE_ERROR:
+                        print("Error: There is no update queued for install.")
+                    elif ret_val == UPDATE_INSTALL_ERROR:
+                        print("Error: There was an error installing the udpate.")
+                    else:
+                        print("An error occurred.")
+                        print("Please check the logs for more details.")
 
                 case '10': # Change the update readiness status
                     print("Changing the update readiness status ...")
@@ -44,7 +66,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     elif ret_val == UPDATE_STATUS_REPEAT_ERROR:
                         print("Error: Update readiness status is already set to the same value.")
                     else:
-                        print("An error occured while changing the update readiness status.")
+                        print("An error occured.")
                         print("Please check the logs for more details.")
 
                 case '20': # Check the update readiness
@@ -54,7 +76,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("Update readiness status checked successfully.")
                         print(f"Update readiness status: {update_readiness_status}")
                     else:
-                        print("An error occured while checking the update readiness status.")
+                        print("An error occured.")
                         print("Please check the logs for more details.")
 
                 case '21':
@@ -64,7 +86,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print(f"Update version: {update_version}")
                         print("Update version checked successfully.")
                     else:
-                        print("An error occured while checking the update version.")
+                        print("An error occured.")
                         print("Please check the logs for more details.")
 
                 case '98': # Redisplay the options menu
@@ -171,11 +193,17 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
                             file_data = key.data.inb.removeprefix(prefix) # Remove header bytes
                             file_data = file_data.removesuffix(suffix) # Remove end of file bytes
-
-                            print(f"File data: {file_data}")
-                            with open(update_file_name, 'wb') as file:
-                                file.write(file_data)
-                            print(f"File reconstructed and written to {update_file_name}.")
+                            
+                            ret_val = write_update_file_to_database(update_file_name, file_data)
+                            if ret_val == SUCCESS:
+                                print("Update file written to database successfully.")
+                            elif ret_val == DOWNLOAD_UPDATE_ERROR:
+                                print("Error: Failed to write update file to database.")
+                                return DOWNLOAD_UPDATE_ERROR
+                            else:
+                                print("An error occurred while retrieving the database name.")
+                                print("Please check the logs for more details.")
+                                return ERROR
 
                             print("File receive check request received.")
                             print("Sending confirmation to server ...")

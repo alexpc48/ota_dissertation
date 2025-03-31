@@ -96,7 +96,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print(f"Connection to {host}:{port} in progress ...")
                 continue
             elif err == 10022: # Failed connction (no client at the address)
-                print("No client found at the specified address.")
+                print("No device found at the specified address.")
                 # Try up to 5 times to connect to the client
                 if connection_attempts > 5:
                     print("Connection attempts exceeded. Exiting ...")
