@@ -15,9 +15,6 @@ import dotenv
 from constants import *
 from functions import *
 
-# Global variables
-database = None
-
 def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
@@ -107,7 +104,7 @@ def check_for_updates() -> typing.Tuple[bool, bytes, int]:
 def get_update_file() -> typing.Tuple[bytes, int]:
     try:
         dotenv.load_dotenv()
-        database = os.getenv("SERVER_DATABASE", "server_ota_updates.db")
+        database = os.getenv("SERVER_DATABASE")
 
         print("Preparing update file ...")
         db_connection = sqlite3.connect(database)

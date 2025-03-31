@@ -4,13 +4,18 @@ from server_functions import *
 from server_thread_functions import *
 
 # Main program
-# Usage: python3 server.py <local_host> <local_port>
 if __name__=='__main__':
     # Create a selector object
     selector = selectors.DefaultSelector()
 
-    # Assign variables from arguments
-    local_host, local_port = sys.argv[1], int(sys.argv[2])
+    dotenv.load_dotenv()
+    database = os.getenv("SERVER_DATABASE")
+    # Get local host and port
+    db_connection = sqlite3.connect(database)
+    cursor = db_connection.cursor()
+    result = (cursor.execute("SELECT local_ip, local_port FROM network_information WHERE network_id = 1")).fetchone()
+    db_connection.close()
+    local_host, local_port = result[0], result[1]
     
     # Create listening socket so that the client can connect
     print(f"Creating listening socket on {local_host}:{local_port} ...")
