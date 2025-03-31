@@ -1,2 +1,4 @@
-v1.24
-Added client side checking before downloading an update
+v1.25
+Split up client and server into functions
+Added local network information to the databases (i.e., listening ip and port)
+Added build and run scripts
