@@ -85,17 +85,17 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         timeout_interval = random.randint(1, 10)
         time.sleep(timeout_interval) # Refreshes in random intervals to avoid collisions
         while not data.connected:
-            err = connection_socket.connect_ex((host, port)) # Try connecting to the client
+            err = connection_socket.connect_ex((host, port)) # Try connecting
             print("[SYN]")
-            if err == 10056: # Connection made
+            if err == 10056 or err == SUCCESS: # Connection made
                 print(f"Connection to {host}:{port} successful.")
                 data.connected = True
                 print("[SYN-ACK]")
                 break
-            elif err == 10035: # Non-blocking connection in progress
+            elif err == 10035 or err == errno.EINPROGRESS: # Non-blocking connection in progress
                 print(f"Connection to {host}:{port} in progress ...")
                 continue
-            elif err == 10022: # Failed connction (no client at the address)
+            elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
                 print("No device found at the specified address.")
                 # Try up to 5 times to connect to the client
                 if connection_attempts > 5:
