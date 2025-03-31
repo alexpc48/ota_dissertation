@@ -70,7 +70,6 @@ def get_client_database() -> typing.Tuple[str, int]:
             print("Unknown operating system.")
             return '', ERROR
 
-        print(database)
         return database, SUCCESS
 
     except Exception as e:
@@ -134,7 +133,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         # Get the server IP and port from the database
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
-        result = (cursor.execute("SELECT server_ip, server_port FROM network_inforation WHERE network_id = 1")).fetchone()
+        result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
         db_connection.close()
         server_host, server_port = result[0], result[1]
 
@@ -182,6 +181,7 @@ def check_update_readiness_status() -> typing.Tuple[bool, bytes, int]:
             print("An error occurred while retrieving the database name.")
             print("Please check the logs for more details.")
             return None, b'', ERROR
+        
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         update_readiness_status = bool((cursor.execute("SELECT update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()[0])
@@ -224,7 +224,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         # Get the server IP and port from the database
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
-        result = (cursor.execute("SELECT server_ip, server_port FROM network_inforation WHERE network_id = 1")).fetchone()
+        result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
         db_connection.close()
         server_host, server_port = result[0], result[1]
 

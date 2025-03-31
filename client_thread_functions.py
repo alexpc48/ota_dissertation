@@ -49,9 +49,10 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case '20': # Check the update readiness
                     print("Displaying the update readiness status ...")
-                    ret_val = check_update_readiness_status(selector, response_event, response_data)
+                    update_readiness_status, _, ret_val = check_update_readiness_status()
                     if ret_val == SUCCESS:
                         print("Update readiness status checked successfully.")
+                        print(f"Update readiness status: {update_readiness_status}")
                     else:
                         print("An error occured while checking the update readiness status.")
                         print("Please check the logs for more details.")
