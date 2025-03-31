@@ -120,7 +120,6 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
                     update_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     update_version TEXT,
-                    update_file BLOB,
                     update_readiness_status BOOLEAN
                     )''')
     
@@ -136,9 +135,9 @@ if __name__=='__main__':
                     (server_ip, server_port, windows_ip, windows_port))
     
     file_data, _ = get_update_file('updates\\snoopy.png')
-    cursor.execute('''INSERT INTO update_information (update_version, update_file, update_readiness_status)
-                    VALUES (?, ?, ?)''',
-                    ('1.0.2.png', file_data, False))
+    cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
+                    VALUES (?, ?)''',
+                    ('1.0.2.png', False))
     
     db_connection.commit()
     db_connection.close()
@@ -170,7 +169,6 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
                     update_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     update_version TEXT,
-                    update_file BLOB,
                     update_readiness_status BOOLEAN
                     )''')
     
@@ -186,9 +184,9 @@ if __name__=='__main__':
                     (server_ip, server_port, linux_ip, linux_port))
     
     file_data, _ = get_update_file('updates\\router_firmware.w')
-    cursor.execute('''INSERT INTO update_information (update_version, update_file, update_readiness_status)
-                    VALUES (?, ?, ?)''',
-                    ('1.0.3.w', file_data, False))
+    cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
+                    VALUES (?, ?)''',
+                    ('1.0.3.w', False))
     
     db_connection.commit()
     db_connection.close()
