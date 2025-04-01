@@ -23,7 +23,7 @@ def options_menu() -> str:
     print("-------------------------------------------------------------------------------------------")
     print("10. Get the client update readiness status")
     print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
-    print("12. Get the client update version") # TODO
+    print("12. Get the client update version")
     print("-------------------------------------------------------------------------------------------")
     print("20. Change the update file") # TODO
     print("-------------------------------------------------------------------------------------------")

@@ -3,8 +3,10 @@
 # Libraries
 import selectors
 import os
+import struct
 import random
 import re
+import constants
 from constants import *
 from client_functions import *
 
@@ -81,7 +83,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case '21':
                     print("Displaying the update version ...")
-                    update_version, ret_val = get_update_version()
+                    update_version, _, ret_val = get_update_version()
                     if ret_val == SUCCESS:
                         print(f"Update version: {update_version}")
                         print("Update version checked successfully.")
@@ -140,79 +142,85 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
             timeout_interval = random.randint(1, 10)
             events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
             for key, mask in events:
+                print('hi')
+                # AI assistance used for creating custom header for the packet
+
                 # Service active socket connections, not the listening socket
                 if key.data == "listening_socket":
                     continue
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
+                file_name = STR_NONE # Initialise variable
                 
                 # Read events
                 if mask & selectors.EVENT_READ:
-                    while True:
-                        recv_data = connection_socket.recv(BYTES_TO_READ)
+                    print('reading')
+                    # Read the packet header
+                    # Receive packed data (integers)
+                    header = connection_socket.recv(PACK_COUNT_BYTES)
+                    if not header: # Closes connection if no data is received from the remote connection
+                        print(f"Connection closed by {remote_host}:{remote_port}.")
+                        _ = close_connection(connection_socket, selector)
+                        response_event.set() # Set completion flag for completed connection
+                        # return SUCCESS
+                    if header:
+                        payload_length, data_type, file_name_length = struct.unpack('!III', header[:PACK_COUNT_BYTES])
+                        print(payload_length)
+                        file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
+
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                        key.data.inb += recv_data
+                        payload = b''
+                        while len(payload) < payload_length:
+                            chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                            if not chunk:
+                                print("Connection closed before receiving the full payload.")
+                                return INCOMPLETE_PAYLOAD_ERROR
+                            payload += chunk
+                        key.data.inb = payload
+                        print(key.data.inb)
+                        # TODO: Possibly change to using match-case
+                        # Applies to status codes
 
-                        if not recv_data or EOF_BYTE in recv_data:
-                            print(f"Data {key.data.inb} from {remote_host}:{remote_port} received.")
-                            break
-
-                    if not recv_data or EOF_BYTE in recv_data:
-
-                        if key.data.inb.startswith(UPDATE_AVALIABLE):
+                        if key.data.inb == UPDATE_AVALIABLE:
                             print("There is an update available.")
                             response_data["update_available"] = True
                             
-                        elif key.data.inb.startswith(UPDATE_NOT_AVALIABLE):
+                        elif key.data.inb == UPDATE_NOT_AVALIABLE:
                             print("There is no update available.")
                             response_data["update_available"] = False
 
-                        elif key.data.inb.startswith(UPDATE_READINESS_REQUEST):
+                        # TODO: Remove as shouldnt need to be used
+                        elif key.data.inb == UPDATE_READINESS_REQUEST:
                             print("Update readiness request received.")
                             update_readiness, update_readiness_bytes, _ = check_update_readiness_status()
                             if update_readiness == True:
                                 print("Client is ready to receive the update.")
-                                key.data.outb = update_readiness_bytes
+                                key.data.outb = update_readiness_bytes + UPDATE_READINESS_REQUEST
                             elif update_readiness == False:
                                 print("Client is not ready to receive the update.")
-                                key.data.outb = update_readiness_bytes
+                                key.data.outb = update_readiness_bytes + UPDATE_READINESS_REQUEST
 
-                        elif key.data.inb.startswith(UPDATE_READINESS_STATUS_REQUEST):
-                            print("Update readiness request received.")
+                        elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
+                            print("Update readiness status request received.")
                             update_readiness, update_readiness_bytes, _ = check_update_readiness_status()
                             if update_readiness == True:
                                 print("Client is ready to receive the update.")
-                                key.data.outb = update_readiness_bytes + REQUEST
+                                key.data.outb = update_readiness_bytes + UPDATE_READINESS_STATUS_REQUEST
                             elif update_readiness == False:
                                 print("Client is not ready to receive the update.")
-                                key.data.outb = update_readiness_bytes + REQUEST
+                                key.data.outb = update_readiness_bytes
 
-                        elif key.data.inb.startswith(FILE_RECEIVED_ACK):
-                            print("The data was received by the server.")
-
-                        elif key.data.inb.startswith(UPDATE_VERSION_REQUEST):
+                        elif key.data.inb == UPDATE_VERSION_REQUEST:
                             print("Update version request received.")
                             _, update_version_bytes, _ = get_update_version()
-                            key.data.outb = UPDATE_VERSION_RESPONSE + FILE_HEADER_SECTION_END + update_version_bytes + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
+                            key.data.outb = update_version_bytes
 
-                        # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
-                        # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
-                        # Currently uses 256 bytes of random data as EOF_BYTE to counteract possibility of collisions.
-                        # FIXME: Should use header file for meta data transfer.
-                        elif (EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
-                            # AI used for pattern matching code
-                            # Gets the header section data from the received data
-                            pattern = rb'^(.*?)' + re.escape(FILE_HEADER_SECTION_END)
-                            header = re.match(pattern, key.data.inb)
-                            prefix = header.group(0)
-                            update_file_name = (header.group(1)).decode()
-
-                            suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
-                            file_data = key.data.inb.removeprefix(prefix) # Remove header bytes
-                            file_data = file_data.removesuffix(suffix) # Remove end of file bytes
+                        # TODO: May need changing in future as this assumes client only ever receives files
+                        elif data_type == 'data':
+                            update_file_name = file_name
                             
-                            ret_val = write_update_file_to_database(update_file_name, file_data)
+                            ret_val = write_update_file_to_database(update_file_name, key.data.inb)
                             if ret_val == SUCCESS:
                                 print("Update file written to database successfully.")
                             elif ret_val == DOWNLOAD_UPDATE_ERROR:
@@ -223,25 +231,48 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 print("Please check the logs for more details.")
                                 return ERROR
 
-                            print("File receive check request received.")
-                            print("Sending confirmation to server ...")
-                            key.data.outb = FILE_RECEIVED_ACK
+                        if key.data.inb == DATA_RECEIVED_ACK:
+                            print("The data was received by the server.")
+                            print(f"Connection closed by {remote_host}:{remote_port}.")
+                            _ = close_connection(connection_socket, selector)
+                            response_event.set() # Set completion flag for completed connection
+                            # return SUCCESS
+                        
+                        elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                            key.data.outb = DATA_RECEIVED_ACK
 
-                        elif key.data.inb.startswith(b''):
-                            print(f"No data received from {remote_host}:{remote_port}.")
+                        elif not key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                            return 
 
                         key.data.inb = b''  # Clear the input buffer
 
-                    # If connection has no data to send and the server has nothing to send, close the connection
-                    if (not recv_data or EOF_BYTE in recv_data) and not key.data.outb:
-                        _ = close_connection(connection_socket, selector)
-                        response_event.set() # Set completion flag for the connection
-
                 # Write events
                 if mask & selectors.EVENT_WRITE:
+                    print('writing')
                     if key.data.outb:
+                        # Write extra header metadata
+                        # Length of payload and request for acknowledgment bytes
+                        # TODO: Open to add more metadata later
+                        payload = key.data.outb
+                        payload_length = len(payload)
+                        # ack_request = RECEIVED_PAYLOAD_ACK_REQUEST
+                        if key.data.outb in dir(constants): # Check if the payload is a constant
+                            data_type = STATUS_CODE
+                        else:
+                            data_type = DATA
+                        
+                        # Keeps the same header format even if client is not sending a file
+                        if not file_name:
+                            file_name = STR_NONE
+
+                        file_name = str.encode(file_name)
+
+                        # Only packs integers
+                        header = struct.pack('!III', payload_length, data_type, len(file_name)) + file_name
+                        key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
-                        key.data.outb += EOF_BYTE # Add end of file tag to the data to be sent
+
+                        # Sends header + payload
                         while key.data.outb:
                             sent = connection_socket.send(key.data.outb)
                             key.data.outb = key.data.outb[sent:]

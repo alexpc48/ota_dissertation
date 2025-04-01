@@ -120,3 +120,20 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         print(f"An error occurred: {e}")
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
+
+# def receive_header(header: bytes):
+#     if not header: # Closes connection if no data is received from the remote connection
+#         print(f"Connection closed by {remote_host}:{remote_port}.")
+#         _ = close_connection(connection_socket, selector)
+#         response_event.set() # Set completion flag for completed connection
+
+#     payload_length, data_type, file_name = struct.unpack('!III', header)
+#     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+#     payload = b''
+#     while len(payload) < payload_length:
+#         chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+#         if not chunk:
+#             print("Connection closed before receiving the full payload.")
+#             return INCOMPLETE_PAYLOAD_ERROR
+#         payload += chunk
+#     key.data.inb = payload

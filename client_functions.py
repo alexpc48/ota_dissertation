@@ -21,7 +21,7 @@ def options_menu() -> str:
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
     print("1. Check for an update")
-    print("2. Download updates") # TODO: Install the update file to the database
+    print("2. Download updates")
     print("3. Install updates") # TODO: Should also tell the server the new version number
     print("-------------------------------------------------------------------------------------------")
     print("10. Change the update readiness status")
@@ -226,10 +226,10 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         db_connection.close()
         server_host, server_port = result[0], result[1]
 
-        update_available, _ = check_for_update(selector, response_event, response_data)
-        if update_available == False:
-            print("No update available to download.")
-            return UPDATE_NOT_AVALIABLE
+        # update_available, _ = check_for_update(selector, response_event, response_data)
+        # if update_available == False:
+        #     print("No update available to download.")
+        #     return UPDATE_NOT_AVALIABLE
 
         selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
         if ret_val == SUCCESS:
@@ -275,6 +275,7 @@ def get_update_version() -> typing.Tuple[str, bytes, int]:
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         update_version = (cursor.execute("SELECT update_version FROM update_information WHERE update_entry_id = 1")).fetchone()[0]
+        print(update_version)
         db_connection.close()
         update_version_bytes = str.encode(update_version)
         return update_version, update_version_bytes, SUCCESS
