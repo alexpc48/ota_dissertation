@@ -262,7 +262,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         print(f"An error occurred: {e}")
         return DOWNLOAD_UPDATE_ERROR
         
-def get_update_version() -> typing.Tuple[str, int]:
+def get_update_version() -> typing.Tuple[str, bytes, int]:
     try:
         database, ret_val = get_client_database()
         if ret_val == SUCCESS:
@@ -276,12 +276,12 @@ def get_update_version() -> typing.Tuple[str, int]:
         cursor = db_connection.cursor()
         update_version = (cursor.execute("SELECT update_version FROM update_information WHERE update_entry_id = 1")).fetchone()[0]
         db_connection.close()
-
-        return update_version, SUCCESS
+        update_version_bytes = str.encode(update_version)
+        return update_version, update_version_bytes, SUCCESS
         
     except Exception as e:
         print(f"An error occurred: {e}")
-        return '', ERROR
+        return STR_NONE, BYTES_NONE, ERROR
     
 def write_update_file_to_database(update_file_name: str, file_data: bytes) -> int:
     try:      

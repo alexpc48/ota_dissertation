@@ -21,7 +21,7 @@ def options_menu() -> str:
     print("-------------------------------------------------------------------------------------------")
     print("1. Push the latest update to the client")
     print("-------------------------------------------------------------------------------------------")
-    print("10. Get the client update readiness status") # TODO
+    print("10. Get the client update readiness status")
     print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
     print("12. Get the client update version") # TODO
     print("-------------------------------------------------------------------------------------------")
@@ -33,7 +33,7 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
-def get_client_information() -> typing.Tuple[str, int, int]:
+def get_client_network_information() -> typing.Tuple[str, int, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # Not using a default database
@@ -64,9 +64,52 @@ def get_client_information() -> typing.Tuple[str, int, int]:
         print(f"An error occurred: {e}")
         return STR_NONE, INT_NONE, ERROR
 
+def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+    try:
+        client_host, client_port, ret_val = get_client_network_information()
+        if ret_val == SUCCESS:
+            print("Retreived client information.")
+        else:
+            print("An error occurred.")
+            return ERROR
+        
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == SUCCESS:
+            print("Connection to client established.")
+        elif ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return CONNECTION_INITIATE_ERROR
+        else:
+            print("An error occurred.")
+            return ERROR
+
+        key = selector.get_key(connection_socket)
+
+        print('Preparing data to send ...')
+        key.data.outb = UPDATE_VERSION_REQUEST
+        print('Data ready to send.')
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return CONNECTION_SERVICE_ERROR
+        
+        update_version = (response_data.get("update_version")).decode()
+
+        print(f"Client update version: {update_version}")
+        
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
+        print("Retrieved client update version successfully.")
+        return SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR
+
 def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
     try:
-        client_host, client_port, ret_val = get_client_information()
+        client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -116,7 +159,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
     
 def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        client_host, client_port, ret_val = get_client_information()
+        client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:

@@ -3,6 +3,7 @@
 # Libraries
 import selectors
 import os
+import re
 from constants import *
 from server_functions import *
 
@@ -32,6 +33,17 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("Client currently is ready to install updates.")
                     elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR and update_readiness == False:
                         print("Error: Client is not ready to receive the update.")
+                    elif ret_val == CONNECTION_INITIATE_ERROR:
+                        print("Error: Connection initiation failed.")
+                    else:
+                        print("An error occurred.")
+                        print("Please check the logs for more details.")
+                
+                case '12': # Get the clients current update version
+                    print("Getting the clients current update version ...")
+                    ret_val = get_client_update_version(selector, response_event, response_data)
+                    if ret_val == SUCCESS:
+                        print("Client update version retrieved successfully.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
@@ -146,6 +158,27 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb.startswith(UPDATE_NOT_READY + REQUEST):
                             print("The client is not ready to receive the update.")
                             response_data["update_readiness"] = False
+                        
+                        # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
+                        # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
+                        # Currently uses 256 bytes of random data as EOF_BYTE to counteract possibility of collisions.
+                        # FIXME: Should use header file for meta data transfer.
+                        elif (UPDATE_VERSION_RESPONSE and EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST) in key.data.inb:
+                            # AI used for pattern matching code
+                            # Gets the header section data from the received data
+                            pattern = rb'^(.*?)' + re.escape(FILE_HEADER_SECTION_END)
+                            header = re.match(pattern, key.data.inb)
+                            prefix = header.group(0)
+                            suffix = EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST + EOF_BYTE
+                            update_file_name = key.data.inb.removeprefix(prefix) # Remove header bytes
+                            update_file_name = update_file_name.removesuffix(suffix) # Remove end of file bytes
+                            
+                            print(f"File {update_file_name} received.")
+                            response_data["update_version"] = update_file_name
+
+                            print("File receive check request received.")
+                            print("Sending confirmation to server ...")
+                            key.data.outb = FILE_RECEIVED_ACK
 
                         elif key.data.inb.startswith(b''):
                             print(f"No data received from {remote_host}:{remote_port}.")

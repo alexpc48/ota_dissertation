@@ -188,6 +188,14 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 print("Client is not ready to receive the update.")
                                 key.data.outb = update_readiness_bytes + REQUEST
 
+                        elif key.data.inb.startswith(FILE_RECEIVED_ACK):
+                            print("The data was received by the server.")
+
+                        elif key.data.inb.startswith(UPDATE_VERSION_REQUEST):
+                            print("Update version request received.")
+                            _, update_version_bytes, _ = get_update_version()
+                            key.data.outb = UPDATE_VERSION_RESPONSE + FILE_HEADER_SECTION_END + update_version_bytes + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
+
                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
                         # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
                         # Currently uses 256 bytes of random data as EOF_BYTE to counteract possibility of collisions.
