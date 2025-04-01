@@ -182,7 +182,7 @@ def check_update_readiness_status() -> typing.Tuple[bool, bytes, int]:
         else:
             print("An error occurred while retrieving the database name.")
             print("Please check the logs for more details.")
-            return None, b'', ERROR
+            return BOOL_NONE, BYTES_NONE, ERROR
         
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
@@ -198,7 +198,7 @@ def check_update_readiness_status() -> typing.Tuple[bool, bytes, int]:
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return None, None, CHECK_UPDATE_ERROR
+        return BOOL_NONE, BYTES_NONE, CHECK_UPDATE_ERROR
 
 # TODO: Needs to check if the update is not already installed or not (i.e., compare version number)
 def download_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
@@ -296,6 +296,7 @@ def write_update_file_to_database(update_file_name: str, file_data: bytes) -> in
         
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
+        print(type(update_file_name))
         cursor.execute('''INSERT INTO update_downloads (update_version, update_file)
                     VALUES (?, ?)''',
                     (update_file_name, file_data))

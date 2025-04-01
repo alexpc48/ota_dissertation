@@ -155,6 +155,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
         
         update_readiness = response_data.get("update_readiness")
         print(update_readiness)
+        print('hi')
 
         if update_readiness == True:
             print("Client is ready to receive the update.")
@@ -195,7 +196,9 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         key = selector.get_key(connection_socket)
 
         print('Preparing data to send ...')
-        key.data.outb = UPDATE_READINESS_REQUEST
+        key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
+        print(key.data.file_name)
+        key.data.outb = file_data
         print('Data ready to send.')
 
         response_event.clear()
@@ -236,6 +239,7 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
         # Gets the latest update file from the database
         update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
         db_connection.close()
+        print(update_version)
         return str.encode(update_version), update_file, SUCCESS
     
     except Exception as e:

@@ -78,7 +78,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         connection_socket.setblocking(False)
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False)
+        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False, file_name='')
         
         # Waits for the connection to complete (blocks all other operations)
         connection_attempts = 0

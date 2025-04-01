@@ -150,10 +150,10 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                file_name = BYTES_NONE # Initialise variable
                 
                 # Read events
                 if mask & selectors.EVENT_READ:
+                    key.data.file_name = BYTES_NONE # Initialise variable
                     # Read the packet header
                     # Receive packed data (integers)
                     header = connection_socket.recv(PACK_COUNT_BYTES)
@@ -164,8 +164,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # return SUCCESS
                     if header:
                         payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
-                        file_name = connection_socket.recv(file_name_length).decode() # Won't evaluate to anything if no file data is sent
-
+                        key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
+                        print(key.data.file_name)
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         payload = b''
                         while len(payload) < payload_length:
@@ -214,7 +214,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         # TODO: May need changing in future as this assumes client only ever receives files
                         elif data_type == DATA:
-                            ret_val = write_update_file_to_database(file_name, key.data.inb)
+                            print(key.data.file_name.decode())
+                            ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
                             if ret_val == SUCCESS:
                                 print("Update file written to database successfully.")
                             elif ret_val == DOWNLOAD_UPDATE_ERROR:
@@ -239,6 +240,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         #     return 
 
                         key.data.inb = b''  # Clear the input buffer
+                        key.data.file_name = b''
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
@@ -253,14 +255,13 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             data_type = STATUS_CODE
                         else:
                             data_type = DATA
-                        print(data_type)
-                        print(payload)
+
                         # Keeps the same header format even if client is not sending a file
-                        if not file_name or type(file_name) == str:
-                            file_name = BYTES_NONE
+                        if not key.data.file_name or type(key.data.file_name) == str:
+                            key.data.file_name = BYTES_NONE
 
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name)) + file_name
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name)) + key.data.file_name
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 

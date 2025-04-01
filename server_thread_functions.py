@@ -111,10 +111,10 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                file_name = BYTES_NONE # Initialise variable
-
+                
                 # Read events
                 if mask & selectors.EVENT_READ:
+                    key.data.file_name = BYTES_NONE # Initialise variable
                     print('reading')
                     # Read the packet header
                     # Receive packed data (integers)
@@ -127,7 +127,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if header:
                         payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
 
-                        file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
+                        key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
 
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         payload = b''
@@ -155,9 +155,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
                             print("Update download request received.")
-                            file_name, file_data, _ = get_update_file()
+                            key.data.file_name, file_data, _ = get_update_file()
                             key.data.outb = file_data
-                            print(key.data.outb)
 
                         # TODO: Remove as shouldnt need to be used
                         # elif key.data.inb == UPDATE_READY:
@@ -214,13 +213,16 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             data_type = DATA
 
                         print(data_type)
-                        
+                        print(key.data.file_name)
+                        print(payload)
+                        print(type(payload))
                         # Keeps the same header format even if client is not sending a file
-                        if not file_name or type(file_name) == str:
-                            file_name = BYTES_NONE
+                        if not key.data.file_name or not type(key.data.file_name) == bytes:
+                            key.data.file_name = BYTES_NONE
 
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name)) + file_name
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name)) + key.data.file_name
+                        print(type(header))
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 
