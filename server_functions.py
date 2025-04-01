@@ -33,7 +33,7 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
-def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+def get_client_information() -> typing.Tuple[str, int, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # Not using a default database
@@ -50,13 +50,78 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("Vehicle IP: ", result[2])
             print("Vehicle Port: ", result[3])
         
-        vehicle_id_input = int(input("Enter the vehicle ID to push the update to: "))
+        vehicle_id_input = int(input("Enter the vehicle ID to connect with: "))
 
         # AI help for next() function
         selected_vehicle = next((v for v in query_result if v[0] == vehicle_id_input), None)
 
         client_host = selected_vehicle[2]
         client_port = selected_vehicle[3]
+
+        return client_host, client_port, SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return STR_NONE, INT_NONE, ERROR
+
+def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
+    try:
+        client_host, client_port, ret_val = get_client_information()
+        if ret_val == SUCCESS:
+            print("Retreived client information.")
+        else:
+            print("An error occurred.")
+            return ERROR
+        
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == SUCCESS:
+            print("Connection to client established.")
+        elif ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return CONNECTION_INITIATE_ERROR
+        else:
+            print("An error occurred.")
+            return ERROR
+
+        key = selector.get_key(connection_socket)
+
+        print('Preparing data to send ...')
+        key.data.outb = UPDATE_READINESS_STATUS_REQUEST
+        print('Data ready to send.')
+
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return CONNECTION_SERVICE_ERROR
+        
+        update_readiness = response_data.get("update_readiness")
+
+        if update_readiness == True:
+            print("Client is ready to receive the update.")
+
+        if update_readiness == False:
+            print("Client is not ready to receive the update.")
+            return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
+        
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
+        print("Retrieved client update readiness successfully.")
+        return update_readiness, SUCCESS
+        
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return BOOL_NONE, ERROR
+    
+def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+    try:
+        client_host, client_port, ret_val = get_client_information()
+        if ret_val == SUCCESS:
+            print("Retreived client information.")
+        else:
+            print("An error occurred.")
+            return ERROR
 
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == SUCCESS:
@@ -65,7 +130,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
         else:
-            print("An error occurred while establishing the connection.")
+            print("An error occurred.")
             return ERROR
 
         key = selector.get_key(connection_socket)
@@ -118,4 +183,4 @@ def get_update_file() -> typing.Tuple[bytes, int]:
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return b'', ERROR
+        return BYTES_NONE, ERROR

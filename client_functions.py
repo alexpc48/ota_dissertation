@@ -166,6 +166,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
             return None, NO_UPDATE_ERROR
 
         response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
         print("Update check request processed successfully.")
         return update_avaliable, SUCCESS
     
@@ -253,6 +254,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             return CONNECTION_SERVICE_ERROR
 
         response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
         print("Update downloaded successfully.")
         return SUCCESS
     

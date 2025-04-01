@@ -30,15 +30,15 @@ def accept_new_connection(socket: socket.socket) -> int:
         return CONNECTION_ACCEPT_ERROR
 
 
-def service_current_connection(key: selectors.SelectorKey, mask: int) -> int:
-    try:
-        socket = key.fileobj
+# def service_current_connection(key: selectors.SelectorKey, mask: int) -> int:
+#     try:
+#         socket = key.fileobj
         
-        if mask & selectors.EVENT_READ: # Uses bitwise AND to check mask holds the value of EVENT_READ
-            received_data = socket.recv(1024) # Recieve 1024 bytes of data
-            if received_data:
-                print(f"Received {received_data!r} from {key.data.address}")
-                key.data.outb += received_data
+#         if mask & selectors.EVENT_READ: # Uses bitwise AND to check mask holds the value of EVENT_READ
+#             received_data = socket.recv(1024) # Recieve 1024 bytes of data
+#             if received_data:
+#                 print(f"Received {received_data!r} from {key.data.address}")
+#                 key.data.outb += received_data
                 
     
 

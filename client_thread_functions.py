@@ -178,6 +178,16 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 print("Client is not ready to receive the update.")
                                 key.data.outb = update_readiness_bytes
 
+                        elif key.data.inb.startswith(UPDATE_READINESS_STATUS_REQUEST):
+                            print("Update readiness request received.")
+                            update_readiness, update_readiness_bytes, _ = check_update_readiness_status()
+                            if update_readiness == True:
+                                print("Client is ready to receive the update.")
+                                key.data.outb = update_readiness_bytes + REQUEST
+                            elif update_readiness == False:
+                                print("Client is not ready to receive the update.")
+                                key.data.outb = update_readiness_bytes + REQUEST
+
                         # FIXME: The way this is done is bad since it could result in the bytes from RECEIVED_FILE_CHECK_REQUEST being in the middle of the data stream
                         # and not at the end, which could mean that even if no all the data was sent and there was an error, the client might still think the download was successfull.
                         # Currently uses 256 bytes of random data as EOF_BYTE to counteract possibility of collisions.

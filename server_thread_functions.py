@@ -22,7 +22,20 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
-                        print("An error occurred while pushing the update.")
+                        print("An error occurred.")
+                        print("Please check the logs for more details.")
+                
+                case '10': # Check client for update readiness status
+                    print("Checking client for update readiness status ...")
+                    update_readiness, ret_val = get_client_update_readiness_status(selector, response_event, response_data)
+                    if ret_val == SUCCESS and update_readiness == True:
+                        print("Client currently is ready to install updates.")
+                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR and update_readiness == False:
+                        print("Error: Client is not ready to receive the update.")
+                    elif ret_val == CONNECTION_INITIATE_ERROR:
+                        print("Error: Connection initiation failed.")
+                    else:
+                        print("An error occurred.")
                         print("Please check the logs for more details.")
 
                 case '98': # Redisplay the options menu
@@ -61,7 +74,7 @@ def listen(selector: selectors.SelectSelector) -> None:
                         elif ret_val == CONNECTION_ACCEPT_ERROR:
                             print("Error: Failed to accept new connection.")
                         else:
-                            print("An error occurred while accepting the connection.")
+                            print("An error occurred.")
                             print("Please check the logs for more details.")
 
     except Exception as e:
@@ -123,6 +136,14 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = file_data
 
                         elif key.data.inb.startswith(UPDATE_NOT_READY):
+                            print("The client is not ready to receive the update.")
+                            response_data["update_readiness"] = False
+
+                        elif key.data.inb.startswith(UPDATE_READY + REQUEST):
+                            print("The client is ready to receive the update.")
+                            response_data["update_readiness"] = True
+
+                        elif key.data.inb.startswith(UPDATE_NOT_READY + REQUEST):
                             print("The client is not ready to receive the update.")
                             response_data["update_readiness"] = False
 
