@@ -33,7 +33,7 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
-def get_client_network_information() -> typing.Tuple[str, int, int]:
+def get_client_network_information() -> typing.Tuple[int, str, int, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # Not using a default database
@@ -58,15 +58,15 @@ def get_client_network_information() -> typing.Tuple[str, int, int]:
         client_host = selected_vehicle[2]
         client_port = selected_vehicle[3]
 
-        return client_host, client_port, SUCCESS
+        return vehicle_id_input, client_host, client_port, SUCCESS
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return STR_NONE, INT_NONE, ERROR
+        return INT_NONE, STR_NONE, INT_NONE, ERROR
 
 def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        client_host, client_port, ret_val = get_client_network_information()
+        vehicle_entry_id, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -96,6 +96,21 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         
         update_version = (response_data.get("update_version")).decode()
 
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        # Gets the latest update file from the database
+        update_version_stored = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicles_entry_id = ?;", (vehicle_entry_id,))).fetchone()
+        db_connection.close()
+
+        if update_version_stored[0] == update_version:
+            print("Client is up to date.")
+        else:
+            print("Client is not up to date.")
+            print("Please update the client.")
+
         print(f"Client update version: {update_version}")
         
         response_data.clear()  # Clear the response data for the next request
@@ -109,7 +124,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
 
 def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
     try:
-        client_host, client_port, ret_val = get_client_network_information()
+        _, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -159,7 +174,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
     
 def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        client_host, client_port, ret_val = get_client_network_information()
+        _, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
