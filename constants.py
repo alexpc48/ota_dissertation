@@ -50,4 +50,5 @@ RECEIVED_PAYLOAD_ACK = b'10015'
 DATA_RECEIVED_ACK = b'10016'
 STATUS_CODE = 1
 DATA = 2
-PACK_COUNT_BYTES = 12
+PACK_COUNT_BYTES = 12 # Number of bytes in the header (3 integers)
+PACK_DATA_COUNT = '!III' # 3 Integers in the header

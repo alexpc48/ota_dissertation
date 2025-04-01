@@ -94,7 +94,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
-        update_version = (response_data.get("update_version")).decode()
+        update_version = response_data.get("update_version")
 
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
@@ -154,6 +154,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
             return CONNECTION_SERVICE_ERROR
         
         update_readiness = response_data.get("update_readiness")
+        print(update_readiness)
 
         if update_readiness == True:
             print("Client is ready to receive the update.")
@@ -224,7 +225,7 @@ def check_for_updates() -> typing.Tuple[bool, bytes, int]:
 
 # TODO: https://chatgpt.com/share/67e81027-c6bc-800e-adbc-2086ecf38797
 # TODO: Use dedicated header file with more information
-def get_update_file() -> typing.Tuple[bytes, int]:
+def get_update_file() -> typing.Tuple[bytes, bytes, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
@@ -235,10 +236,8 @@ def get_update_file() -> typing.Tuple[bytes, int]:
         # Gets the latest update file from the database
         update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
         db_connection.close()
-
-        file_data = str.encode(update_version) + FILE_HEADER_SECTION_END + update_file + EOF_TAG_BYTE + RECEIVED_FILE_CHECK_REQUEST
-        return file_data, SUCCESS
+        return str.encode(update_version), update_file, SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return BYTES_NONE, ERROR
+        return STR_NONE, BYTES_NONE, ERROR

@@ -226,10 +226,10 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         db_connection.close()
         server_host, server_port = result[0], result[1]
 
-        # update_available, _ = check_for_update(selector, response_event, response_data)
-        # if update_available == False:
-        #     print("No update available to download.")
-        #     return UPDATE_NOT_AVALIABLE
+        update_available, _ = check_for_update(selector, response_event, response_data)
+        if update_available == False:
+            print("No update available to download.")
+            return UPDATE_NOT_AVALIABLE
 
         selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
         if ret_val == SUCCESS:
@@ -286,7 +286,6 @@ def get_update_version() -> typing.Tuple[str, bytes, int]:
     
 def write_update_file_to_database(update_file_name: str, file_data: bytes) -> int:
     try:      
-        print(f"File data: {file_data}")
         database, ret_val = get_client_database()
         if ret_val == SUCCESS:
             print("Database name retrieved successfully.")
@@ -339,10 +338,9 @@ def install_update() -> int:
         result = (cursor.execute("SELECT update_version, update_file FROM update_downloads")).fetchone()
         update_file_name = result[0]
         file_data = result[1]
+        print(update_file_name)
 
         file_path = os.path.join("install_location", update_file_name)
-
-        print(file_path)
 
         with open(file_path, 'wb') as file:
             file.write(file_data)
@@ -353,7 +351,6 @@ def install_update() -> int:
         print("Update file removed from the download queue.")
 
 
-        print(update_file_name)
         cursor.execute("UPDATE update_information SET update_version = ? WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed
         db_connection.commit()
         db_connection.close()
