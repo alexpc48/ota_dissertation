@@ -202,6 +202,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         print('Preparing data to send ...')
         key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
         print(key.data.file_name)
+        key.data.data_subtype = UPDATE_FILE
         key.data.outb = file_data
         print('Data ready to send.')
 

@@ -142,7 +142,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
             timeout_interval = random.randint(1, 10)
             events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
             for key, mask in events:
-                # AI assistance used for creating custom header for the packet
+                # AI assistance used for the idea of how to create the custom header for the packet
 
                 # Service active socket connections, not the listening socket
                 if key.data == "listening_socket":
@@ -163,9 +163,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         response_event.set() # Set completion flag for completed connection
 
                     if header:
-                        payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
+                        payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
                         key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
-                        print(key.data.file_name)
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         payload = b''
                         while len(payload) < payload_length:
@@ -200,20 +199,23 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Update version request received.")
                             _, update_version_bytes, _ = get_update_version()
                             key.data.outb = update_version_bytes
+                            key.data.data_subtype = UPDATE_VERSION
 
                         # TODO: May need changing in future as this assumes client only ever receives files
                         elif data_type == DATA:
-                            print(key.data.file_name.decode())
-                            ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
-                            if ret_val == SUCCESS:
-                                print("Update file written to database successfully.")
-                            elif ret_val == DOWNLOAD_UPDATE_ERROR:
-                                print("Error: Failed to write update file to database.")
-                                return DOWNLOAD_UPDATE_ERROR
-                            else:
-                                print("An error occurred while retrieving the database name.")
-                                print("Please check the logs for more details.")
-                                return ERROR
+                            if data_subtype == UPDATE_VERSION:
+                                print("Update version received.")
+                            elif data_subtype == UPDATE_FILE:
+                                ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
+                                if ret_val == SUCCESS:
+                                    print("Update file written to database successfully.")
+                                elif ret_val == DOWNLOAD_UPDATE_ERROR:
+                                    print("Error: Failed to write update file to database.")
+                                    return DOWNLOAD_UPDATE_ERROR
+                                else:
+                                    print("An error occurred while retrieving the database name.")
+                                    print("Please check the logs for more details.")
+                                    return ERROR
 
                         if key.data.inb == DATA_RECEIVED_ACK:
                             print("The data was received by the server.")
@@ -225,8 +227,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
                             key.data.outb = DATA_RECEIVED_ACK
 
-                        key.data.inb = b''  # Clear the input buffer
-                        key.data.file_name = b''
+                        key.data.inb = BYTES_NONE  # Clear the input buffer
+                        key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
@@ -234,6 +236,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Write extra header metadata
                         # Length of payload and request for acknowledgment bytes
                         # TODO: Open to add more metadata later
+                        print("Packing data ...")
                         payload = key.data.outb
                         payload_length = len(payload)
                         if key.data.outb in vars(constants).values(): # Check if the payload is a constant
@@ -245,9 +248,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Keeps the same header format even if client is not sending a file
                         if not key.data.file_name or type(key.data.file_name) == str:
                             key.data.file_name = BYTES_NONE
+                        # if not key.data.data_subtype:
+                        #     key.data.data_subtype = INT_NONE
 
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name)) + key.data.file_name
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype) + key.data.file_name
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 

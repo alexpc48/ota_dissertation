@@ -115,6 +115,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Read events
                 if mask & selectors.EVENT_READ:
                     key.data.file_name = BYTES_NONE # Initialise variable
+                    # key.data.data_subtype = INT_NONE
                     # Read the packet header
                     # Receive packed data (integers)
                     header = connection_socket.recv(PACK_COUNT_BYTES)
@@ -124,7 +125,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         response_event.set() # Set completion flag for completed connection
 
                     if header:
-                        payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
+                        payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
+
+                        print(data_subtype)
 
                         key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
 
@@ -137,6 +140,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 return INCOMPLETE_PAYLOAD_ERROR
                             payload += chunk
                         key.data.inb = payload
+
+                        print(payload)
 
                         # Applies to status codes
 
@@ -155,6 +160,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Update download request received.")
                             key.data.file_name, file_data, _ = get_update_file()
                             key.data.outb = file_data
+                            key.data.data_subtype = UPDATE_FILE
 
                         elif key.data.inb == UPDATE_READY:
                             print("The client is ready to install the update.")
@@ -166,8 +172,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         
                         # TODO: May need changing in future as assumes client only sends update version and the rest is through status codes
                         elif data_type == DATA:
-                            response_data["update_version"] = key.data.inb.decode()
-                            key.data.outb = DATA_RECEIVED_ACK
+                            if data_subtype == UPDATE_VERSION:
+                                response_data["update_version"] = key.data.inb.decode()
+                                key.data.outb = DATA_RECEIVED_ACK
 
                         if key.data.inb == DATA_RECEIVED_ACK:
                             print("The data was received by the client.")
@@ -186,6 +193,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Write extra header metadata
                         # Length of payload and request for acknowledgment bytes
                         # TODO: Open to add more metadata later
+                        print("Packing data ...")
                         payload = key.data.outb
                         payload_length = len(payload)
                         if key.data.outb in vars(constants).values(): # Check if the payload is a constant
@@ -195,12 +203,13 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         # TODO: Send file name as key.data.outb instead
                         # Keeps the same header format even if client is not sending a file
-                        if not key.data.file_name or not type(key.data.file_name) == bytes:
+                        if not key.data.file_name or type(key.data.file_name) == str:
                             key.data.file_name = BYTES_NONE
+                        # if not key.data.data_subtype or type(key.data.data_subtype) == int:
+                        #     key.data.data_subtype = INT_NONE
 
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name)) + key.data.file_name
-                        print(type(header))
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype) + key.data.file_name
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 

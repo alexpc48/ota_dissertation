@@ -58,7 +58,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket.setblocking(False)
 
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=address, inb=b"", outb=b"")
+        data = types.SimpleNamespace(address=address, inb=b"", outb=b"", file_name=STR_NONE, data_subtype=INT_NONE)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
@@ -78,7 +78,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         connection_socket.setblocking(False)
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False, file_name='')
+        data = types.SimpleNamespace(address=(host, port), inb=b"", outb=b"", connected=False, file_name=STR_NONE, data_subtype=INT_NONE)
         
         # Waits for the connection to complete (blocks all other operations)
         connection_attempts = 0
