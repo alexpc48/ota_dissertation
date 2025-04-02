@@ -27,7 +27,8 @@ def options_menu() -> str:
     print("10. Change the update readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status")
-    print("21. Display the update version")
+    print("21. Display the update status") # TODO
+    print("22. Display the update version")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("-------------------------------------------------------------------------------------------")
@@ -45,11 +46,12 @@ def get_os_type() -> typing.Tuple[str, int]:
             print("The machine is running Linux.")
         else:
             print(f"Unknown operating system: {os_type}")
+            return ERROR
         return os_type, SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return '', ERROR
+        return STR_NONE, ERROR
 
 def get_client_database() -> typing.Tuple[str, int]:
     try:

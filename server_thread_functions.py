@@ -115,7 +115,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Read events
                 if mask & selectors.EVENT_READ:
                     key.data.file_name = BYTES_NONE # Initialise variable
-                    print('reading')
                     # Read the packet header
                     # Receive packed data (integers)
                     header = connection_socket.recv(PACK_COUNT_BYTES)
@@ -123,7 +122,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
                         response_event.set() # Set completion flag for completed connection
-                        # return SUCCESS
+
                     if header:
                         payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
 
@@ -139,7 +138,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             payload += chunk
                         key.data.inb = payload
 
-                        # TODO: Possibly change to using match-case
                         # Applies to status codes
 
                         if key.data.inb == UPDATE_CHECK_REQUEST:
@@ -157,17 +155,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Update download request received.")
                             key.data.file_name, file_data, _ = get_update_file()
                             key.data.outb = file_data
-
-                        # TODO: Remove as shouldnt need to be used
-                        # elif key.data.inb == UPDATE_READY:
-                        #     print("The client is ready to receive the update.")
-                        #     response_data["update_readiness"] = True
-                        #     file_data, _ = get_update_file()
-                        #     key.data.outb = file_data
-
-                        # elif key.data.inb == UPDATE_NOT_READY + UPDATE_READINESS_REQUEST:
-                        #     print("The client is not ready to receive the update.")
-                        #     response_data["update_readiness"] = False
 
                         elif key.data.inb == UPDATE_READY:
                             print("The client is ready to install the update.")
@@ -187,14 +174,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print(f"Connection closed by {remote_host}:{remote_port}.")
                             _ = close_connection(connection_socket, selector)
                             response_event.set() # Set completion flag for completed connection
-                            # return SUCCESS
 
                         elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
                             key.data.outb = DATA_RECEIVED_ACK
-
-                        # elif not key.data.inb and not key.data.outb:
-                        #     return 
-
 
                         key.data.inb = b''  # Clear the input buffer
 
@@ -206,16 +188,12 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # TODO: Open to add more metadata later
                         payload = key.data.outb
                         payload_length = len(payload)
-                        # ack_request = RECEIVED_PAYLOAD_ACK_REQUEST
                         if key.data.outb in vars(constants).values(): # Check if the payload is a constant
                             data_type = STATUS_CODE
                         else:
                             data_type = DATA
 
-                        print(data_type)
-                        print(key.data.file_name)
-                        print(payload)
-                        print(type(payload))
+                        # TODO: Send file name as key.data.outb instead
                         # Keeps the same header format even if client is not sending a file
                         if not key.data.file_name or not type(key.data.file_name) == bytes:
                             key.data.file_name = BYTES_NONE

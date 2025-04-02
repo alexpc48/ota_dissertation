@@ -81,7 +81,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occured.")
                         print("Please check the logs for more details.")
 
-                case '21':
+                case '22':
                     print("Displaying the update version ...")
                     update_version, _, ret_val = get_update_version()
                     if ret_val == SUCCESS:
@@ -161,7 +161,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
                         response_event.set() # Set completion flag for completed connection
-                        # return SUCCESS
+
                     if header:
                         payload_length, data_type, file_name_length = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
                         key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
@@ -175,7 +175,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 return INCOMPLETE_PAYLOAD_ERROR
                             payload += chunk
                         key.data.inb = payload
-                        # TODO: Possibly change to using match-case
+
                         # Applies to status codes
 
                         if key.data.inb == UPDATE_AVALIABLE:
@@ -185,17 +185,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_NOT_AVALIABLE:
                             print("There is no update available.")
                             response_data["update_available"] = False
-
-                        # TODO: Remove as shouldnt need to be used
-                        # elif key.data.inb == UPDATE_READINESS_REQUEST:
-                        #     print("Update readiness request received.")
-                        #     update_readiness, update_readiness_bytes, _ = check_update_readiness_status()
-                        #     if update_readiness == True:
-                        #         print("Client is ready to receive the update.")
-                        #         key.data.outb = update_readiness_bytes + UPDATE_READINESS_REQUEST
-                        #     elif update_readiness == False:
-                        #         print("Client is not ready to receive the update.")
-                        #         key.data.outb = update_readiness_bytes + UPDATE_READINESS_REQUEST
 
                         elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
                             print("Update readiness status request received.")
@@ -236,9 +225,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
                             key.data.outb = DATA_RECEIVED_ACK
 
-                        # elif not key.data.inb and not key.data.outb:
-                        #     return 
-
                         key.data.inb = b''  # Clear the input buffer
                         key.data.file_name = b''
 
@@ -250,12 +236,12 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # TODO: Open to add more metadata later
                         payload = key.data.outb
                         payload_length = len(payload)
-                        # ack_request = RECEIVED_PAYLOAD_ACK_REQUEST
                         if key.data.outb in vars(constants).values(): # Check if the payload is a constant
                             data_type = STATUS_CODE
                         else:
                             data_type = DATA
 
+                        # TODO: Send file name as key.data.outb instead
                         # Keeps the same header format even if client is not sending a file
                         if not key.data.file_name or type(key.data.file_name) == str:
                             key.data.file_name = BYTES_NONE

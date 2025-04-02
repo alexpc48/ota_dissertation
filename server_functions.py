@@ -27,6 +27,8 @@ def options_menu() -> str:
     print("-------------------------------------------------------------------------------------------")
     print("20. Change the update file") # TODO
     print("-------------------------------------------------------------------------------------------")
+    print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
+    print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
     print("-------------------------------------------------------------------------------------------")
@@ -103,6 +105,8 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         cursor = db_connection.cursor()
         # Gets the latest update file from the database
         update_version_stored = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicles_entry_id = ?;", (vehicle_entry_id,))).fetchone()
+        cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (vehicle_entry_id,))
+        db_connection.commit()
         db_connection.close()
 
         if update_version_stored[0] == update_version:

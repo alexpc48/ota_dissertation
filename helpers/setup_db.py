@@ -4,6 +4,8 @@
 import sqlite3
 import typing
 
+from get_os_type import *
+
 # Gets the example update files data in bytes
 def get_update_file(file: str) -> typing.Tuple[bytes, int]:
     with open(file, 'rb') as file:
@@ -14,6 +16,7 @@ def get_update_file(file: str) -> typing.Tuple[bytes, int]:
 # Not dynamically created so it simulates real application (pre-made dataases)
 # Uses SQLite for simplicity as database tehcnology is out of scope
 # TODO: Add cryptographic data table to the database
+# TODO: Add last poll time to database
 if __name__=='__main__':
 
     # Running on network OTA
@@ -25,6 +28,21 @@ if __name__=='__main__':
     server_ip, server_port = '127.0.0.1', 50097
     windows_ip, windows_port = '127.0.0.1', 50150
     linux_ip, linux_port = '127.0.0.1', 50069
+
+
+    os_type = get_os_type_func()
+    if os_type == "Windows":
+        file1 = 'updates\\snoopy.png'
+        file2 = 'updates\\dban.iso'
+        file3 = 'updates\\router_firmware.w'
+        file4 = 'updates\\popeye.png'
+        file5 = 'updates\\bugs_bunny.jpg'
+    elif os_type == "Linux":
+        file1 = 'updates/snoopy.png'
+        file2 = 'updates/dban.iso'
+        file3 = 'updates/router_firmware.w'
+        file4 = 'updates/popeye.png'
+        file5 = 'updates/bugs_bunny.jpg'
 
     print("Setting up server database ...")
     db_connection = sqlite3.connect("server_ota_updates.db")
@@ -41,7 +59,8 @@ if __name__=='__main__':
                     update_readiness_status BOOLEAN,
                     update_id INTEGER REFERENCES updates(update_id),
                     vehicle_ip TEXT,
-                    vehicle_port INTEGER
+                    vehicle_port INTEGER,
+                    last_poll_time TIMESTAMP
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS updates (
@@ -54,14 +73,14 @@ if __name__=='__main__':
    
     # Linux laptop
     # UUID = c42157c2-9526-b07c-7e43-b4a9fc957957
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port)
-                    VALUES (?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
                     ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port))
 
     # Windows laptop
     # UUID = CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port)
-                    VALUES (?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
                     ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port))
     
     cursor.execute('''INSERT INTO network_information (local_ip, local_port)
@@ -69,23 +88,23 @@ if __name__=='__main__':
                     (server_ip, server_port))
     
     # Example updates
-    file_data, _ = get_update_file('updates\\snoopy.png')
+    file_data, _ = get_update_file(file1)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.0.png', file_data))
-    file_data, _ = get_update_file('updates\\dban.iso')
+    file_data, _ = get_update_file(file2)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.1.iso', file_data))
-    file_data, _ = get_update_file('updates\\router_firmware.w')
+    file_data, _ = get_update_file(file3)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.2.w', file_data))
-    file_data, _ = get_update_file('updates\\popeye.png')
+    file_data, _ = get_update_file(file4)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.3.png', file_data))
-    file_data, _ = get_update_file('updates\\bugs_bunny.jpg')
+    file_data, _ = get_update_file(file5)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.4.jpg', file_data))
@@ -134,10 +153,10 @@ if __name__=='__main__':
                     VALUES (?, ?, ?, ?)''',
                     (server_ip, server_port, windows_ip, windows_port))
     
-    file_data, _ = get_update_file('updates\\snoopy.png')
+    file_data, _ = get_update_file(file3)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
                     VALUES (?, ?)''',
-                    ('1.0.2.png', False))
+                    ('1.0.2.w', False))
     
     db_connection.commit()
     db_connection.close()
@@ -183,10 +202,10 @@ if __name__=='__main__':
                     VALUES (?, ?, ?, ?)''',
                     (server_ip, server_port, linux_ip, linux_port))
     
-    file_data, _ = get_update_file('updates\\router_firmware.w')
+    file_data, _ = get_update_file(file4)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
                     VALUES (?, ?)''',
-                    ('1.0.3.w', False))
+                    ('1.0.3.png', False))
     
     db_connection.commit()
     db_connection.close()

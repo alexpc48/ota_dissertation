@@ -14,7 +14,7 @@ rm -f server_ota_updates.db client_linux_ota_updates.db client_windows_ota_updat
 
 # Setup new databases
 echo "Setting up new databases..."
-python "$helpers_dir/setup_db_linux.py"
+python "$helpers_dir/setup_db.py"
 
 # Create update installation path
 if [ ! -d "$root_dir/install_location" ]; then
