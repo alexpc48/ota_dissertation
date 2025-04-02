@@ -174,7 +174,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif data_type == DATA:
                             if data_subtype == UPDATE_VERSION:
                                 response_data["update_version"] = key.data.inb.decode()
-                                key.data.outb = DATA_RECEIVED_ACK
+                            elif data_subtype == UPDATE_VERSION_PUSH:
+                                _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
+                            key.data.outb = DATA_RECEIVED_ACK
 
                         if key.data.inb == DATA_RECEIVED_ACK:
                             print("The data was received by the client.")

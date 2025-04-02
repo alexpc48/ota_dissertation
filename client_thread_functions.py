@@ -47,7 +47,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case '3': # Install the update
                     print("Installing the update ...")
-                    ret_val = install_update()
+                    ret_val = install_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update installed successfully.")
                     elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
@@ -203,9 +203,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         # TODO: May need changing in future as this assumes client only ever receives files
                         elif data_type == DATA:
-                            if data_subtype == UPDATE_VERSION:
-                                print("Update version received.")
-                            elif data_subtype == UPDATE_FILE:
+                            if data_subtype == UPDATE_FILE:
                                 ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
                                 if ret_val == SUCCESS:
                                     print("Update file written to database successfully.")
