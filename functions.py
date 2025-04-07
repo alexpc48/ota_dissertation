@@ -10,6 +10,10 @@ import errno
 import random
 import time
 from constants import *
+import sqlite3
+import platform
+import dotenv
+import os
 
 def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
@@ -58,11 +62,12 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket.setblocking(False)
 
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=address, inb=b"", outb=b"", file_name=STR_NONE, data_subtype=INT_NONE)
+        data = types.SimpleNamespace(address=address, inb=b"", outb=b"", file_name=STR_NONE, data_subtype=INT_NONE, identifier=BYTES_NONE)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
         print("[ACK]")
+
         return SUCCESS
     
     except Exception as e:
@@ -109,10 +114,37 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print(f"Connection to {host}:{port} failed with error: {errno.errorcode[err]}\n")
                 print("Please check the host and port details.")
                 return None, None, CONNECTION_INITIATE_ERROR
-
+            
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
         print("Socket registered.")
+
+        # Retrieve the local_identifier from the network_information table
+        try:
+            os_type = platform.system()
+
+            if os_type == "Windows":
+                database = os.getenv("WINDOWS_CLIENT_DATABASE")
+            elif os_type == "Linux":
+                database = os.getenv("LINUX_CLIENT_DATABASE")
+            else:
+                database = os.getenv("SERVER_DATABASE")
+
+            connection = sqlite3.connect(database)
+            cursor = connection.cursor()
+            local_identifier = (cursor.execute("SELECT local_identifier FROM network_information LIMIT 1;")).fetchone()[0]
+            if local_identifier:
+                print(f"Local identifier retrieved: {local_identifier}")
+            connection.close()
+
+        except Exception as e:
+            print(f"An error occurred while retrieving the local identifier: {e}")
+            return None, None, ERROR
+
+        # Send identifier
+        data.outb = str.encode(local_identifier)
+        print(f"Sending identifier: {data.outb}")
+        connection_socket.send(data.outb)
 
         return selector, connection_socket, SUCCESS
     

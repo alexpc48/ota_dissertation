@@ -49,6 +49,7 @@ if __name__=='__main__':
     cursor = db_connection.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS network_information (
                     network_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    local_identifier TEXT,
                     local_ip TEXT,
                     local_port INTEGER
                     )''')
@@ -83,9 +84,9 @@ if __name__=='__main__':
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
                     ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port))
     
-    cursor.execute('''INSERT INTO network_information (local_ip, local_port)
-                    VALUES (?, ?)''',
-                    (server_ip, server_port))
+    cursor.execute('''INSERT INTO network_information (local_identifier, local_ip, local_port)
+                    VALUES (?, ?, ?)''',
+                    ('SERVER-1234-5678-90AB-CDEF12345678', server_ip, server_port))
     
     # Example updates
     file_data, _ = get_update_file(file1)
@@ -130,6 +131,7 @@ if __name__=='__main__':
     cursor = db_connection.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS network_information (
                     network_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    local_identifier TEXT,
                     server_ip TEXT,
                     server_port INTEGER,
                     local_ip TEXT,
@@ -149,9 +151,9 @@ if __name__=='__main__':
                     )''')
     
     print("Adding data to the Windows client database ...")
-    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port)
-                    VALUES (?, ?, ?, ?)''',
-                    (server_ip, server_port, windows_ip, windows_port))
+    cursor.execute('''INSERT INTO network_information (local_identifier, server_ip, server_port, local_ip, local_port)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', server_ip, server_port, windows_ip, windows_port))
     
     file_data, _ = get_update_file(file3)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
@@ -179,6 +181,7 @@ if __name__=='__main__':
     cursor = db_connection.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS network_information (
                     network_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    local_identifier TEXT,
                     server_ip TEXT,
                     server_port INTEGER,
                     local_ip TEXT,
@@ -198,9 +201,9 @@ if __name__=='__main__':
                     )''')
 
     print("Adding data to the Linux database ...")
-    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port)
-                    VALUES (?, ?, ?, ?)''',
-                    (server_ip, server_port, linux_ip, linux_port))
+    cursor.execute('''INSERT INTO network_information (local_identifier, server_ip, server_port, local_ip, local_port)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', server_ip, server_port, linux_ip, linux_port))
     
     file_data, _ = get_update_file(file4)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)

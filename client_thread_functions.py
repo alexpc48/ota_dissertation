@@ -222,7 +222,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             response_event.set() # Set completion flag for completed connection
                             # return SUCCESS
                         
-                        elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                        elif key.data.inb != DATA_RECEIVED_ACK:
                             key.data.outb = DATA_RECEIVED_ACK
 
                         key.data.inb = BYTES_NONE  # Clear the input buffer
@@ -246,11 +246,14 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Keeps the same header format even if client is not sending a file
                         if not key.data.file_name or type(key.data.file_name) == str:
                             key.data.file_name = BYTES_NONE
+                            file_name_length = 0
+                        else:
+                            file_name_length = len(key.data.file_name)
                         # if not key.data.data_subtype:
                         #     key.data.data_subtype = INT_NONE
 
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype) + key.data.file_name
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, file_name_length, key.data.data_subtype) + key.data.file_name
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 

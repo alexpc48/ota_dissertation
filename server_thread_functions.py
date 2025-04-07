@@ -79,7 +79,7 @@ def listen(selector: selectors.SelectSelector) -> None:
             timeout_interval = random.randint(1, 10)
             events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
             if events:
-                for key, _ in events:
+                for key, mask in events:
                     # If the event comes from the listening socket, accept the new connection
                     if key.data == "listening_socket":
                         ret_val = accept_new_connection(key.fileobj, selector)
@@ -118,18 +118,27 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     # key.data.data_subtype = INT_NONE
                     # Read the packet header
                     # Receive packed data (integers)
+                    print("hello")
+                    if not key.data.identifier:
+                        print("hi")
+                        key.data.identifier = connection_socket.recv(IDENTIFIER_BYTES_TO_READ)
+
+                    print(key.data.identifier)
+                    time.sleep(1)
                     header = connection_socket.recv(PACK_COUNT_BYTES)
+                    print(header)
                     if not header: # Closes connection if no data is received from the remote connection
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
                         response_event.set() # Set completion flag for completed connection
 
                     if header:
+                        print("Unpacking data ...")
                         payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
-
-                        print(data_subtype)
-
-                        key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
+                        
+                        print(file_name_length)
+                        if not file_name_length == 0:
+                            key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
 
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         payload = b''
@@ -178,7 +187,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
                             key.data.outb = DATA_RECEIVED_ACK
 
-                        if key.data.inb == DATA_RECEIVED_ACK:
+                        if key.data.inb == DATA_RECEIVED_ACK and not key.data.outb:
                             print("The data was received by the client.")
                             print(f"Connection closed by {remote_host}:{remote_port}.")
                             _ = close_connection(connection_socket, selector)
