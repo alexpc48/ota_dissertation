@@ -252,37 +252,38 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
         return STR_NONE, BYTES_NONE, ERROR
 
 def store_update_version(update_version: str, selector: selectors.SelectSelector, connection_socket: socket.socket) -> int:
-    try:
-        key = selector.get_key(connection_socket)
-        ip, port = key.data.address[0], key.data.address[1]
-        print(f"Received update version from {ip}:{port} ...")
-        dotenv.load_dotenv()
-        database = os.getenv("SERVER_DATABASE")
+    pass
+    # try:
+    #     key = selector.get_key(connection_socket)
+    #     ip, port = key.data.address[0], key.data.address[1]
+    #     print(f"Received update version from {ip}:{port} ...")
+    #     dotenv.load_dotenv()
+    #     database = os.getenv("SERVER_DATABASE")
 
-        db_connection = sqlite3.connect(database)
-        cursor = db_connection.cursor()
-        # Gets the latest update file from the database
-        latest_update_version = (cursor.execute("SELECT update_version FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()[0]
-        print(latest_update_version)
-        print(update_version)
-        if latest_update_version == update_version:
-            update_entry_id = (cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (update_version,))).fetchone()
-            if update_entry_id:
-                cursor.execute("UPDATE vehicles SET update_id = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_entry_id[0], ip, port))
-            else:
-                print("Error: Update version not found in the database.")
-                return ERROR
-            print("Client is on the latest update version.")
-        else:
-            cursor.execute("UPDATE vehicles SET update_version = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_version, ip, port))
-            print("Client is not on the latest update version.")
-        cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_ip = ? AND vehicle_port = ?", (ip, port))
+    #     db_connection = sqlite3.connect(database)
+    #     cursor = db_connection.cursor()
+    #     # Gets the latest update file from the database
+    #     latest_update_version = (cursor.execute("SELECT update_version FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()[0]
+    #     print(latest_update_version)
+    #     print(update_version)
+    #     if latest_update_version == update_version:
+    #         update_entry_id = (cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (update_version,))).fetchone()
+    #         if update_entry_id:
+    #             cursor.execute("UPDATE vehicles SET update_id = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_entry_id[0], ip, port))
+    #         else:
+    #             print("Error: Update version not found in the database.")
+    #             return ERROR
+    #         print("Client is on the latest update version.")
+    #     else:
+    #         cursor.execute("UPDATE vehicles SET update_version = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_version, ip, port))
+    #         print("Client is not on the latest update version.")
+    #     cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_ip = ? AND vehicle_port = ?", (ip, port))
         
         
-        db_connection.commit()
-        db_connection.close()
-        return SUCCESS
+    #     db_connection.commit()
+    #     db_connection.close()
+    #     return SUCCESS
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return ERROR
+    # except Exception as e:
+    #     print(f"An error occurred: {e}")
+    #     return ERROR

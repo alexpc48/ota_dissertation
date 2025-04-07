@@ -360,55 +360,55 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
         print("Update version updated in the database.")
         
 
-        database, ret_val = get_client_database()
-        if ret_val == SUCCESS:
-            print("Database name retrieved successfully.")
-        else:
-            print("An error occurred while retrieving the database name.")
-            print("Please check the logs for more details.")
-            return ERROR
+        # database, ret_val = get_client_database()
+        # if ret_val == SUCCESS:
+        #     print("Database name retrieved successfully.")
+        # else:
+        #     print("An error occurred while retrieving the database name.")
+        #     print("Please check the logs for more details.")
+        #     return ERROR
         
-        # Get the server IP and port from the database
-        db_connection = sqlite3.connect(database)
-        cursor = db_connection.cursor()
+        # # Get the server IP and port from the database
+        # db_connection = sqlite3.connect(database)
+        # cursor = db_connection.cursor()
 
-        # Check if there is already an update queued for download
-        result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
-        if result[0]:
-            print("An update is already queued for download.")
-            db_connection.close()
-            return QUEUED_UPDATE_ERROR
+        # # Check if there is already an update queued for download
+        # result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
+        # if result[0]:
+        #     print("An update is already queued for download.")
+        #     db_connection.close()
+        #     return QUEUED_UPDATE_ERROR
         
-        result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
-        db_connection.close()
-        server_host, server_port = result[0], result[1]
+        # result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
+        # db_connection.close()
+        # server_host, server_port = result[0], result[1]
 
-        selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
-        if ret_val == SUCCESS:
-            print("Connection to server established.")
-        elif ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
-            return CONNECTION_INITIATE_ERROR
-        else:
-            print("An error occurred while establishing the connection.")
-            return ERROR        
+        # selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
+        # if ret_val == SUCCESS:
+        #     print("Connection to server established.")
+        # elif ret_val == CONNECTION_INITIATE_ERROR:
+        #     print("Error: Connection initiation failed.")
+        #     return CONNECTION_INITIATE_ERROR
+        # else:
+        #     print("An error occurred while establishing the connection.")
+        #     return ERROR        
 
-        key = selector.get_key(connection_socket)
+        # key = selector.get_key(connection_socket)
         
-        print('Preparing data to send ...')
-        key.data.data_subtype = UPDATE_VERSION_PUSH
-        key.data.outb = str.encode(update_file_name)
-        print('Data ready to send.')
+        # print('Preparing data to send ...')
+        # key.data.data_subtype = UPDATE_VERSION_PUSH
+        # key.data.outb = str.encode(update_file_name)
+        # print('Data ready to send.')
 
-        response_event.clear()
-        response_event.wait(timeout=None)
-        if not response_event.is_set():
-            print("Timeout waiting for server response.")
-            return CONNECTION_SERVICE_ERROR
+        # response_event.clear()
+        # response_event.wait(timeout=None)
+        # if not response_event.is_set():
+        #     print("Timeout waiting for server response.")
+        #     return CONNECTION_SERVICE_ERROR
 
-        response_data.clear()  # Clear the response data for the next request
-        response_event.clear() # Clear the event for the next request
-        print("Sending new update version to the server")
+        # response_data.clear()  # Clear the response data for the next request
+        # response_event.clear() # Clear the event for the next request
+        # print("Sending new update version to the server")
     
         print("Update installed successfully.")
         return SUCCESS
