@@ -126,11 +126,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                     if header:
                         payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
-
-                        print(data_subtype)
-
-                        key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
-
+                        # key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                         payload = b''
                         while len(payload) < payload_length:
@@ -141,7 +137,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             payload += chunk
                         key.data.inb = payload
 
-                        print(payload)
+                        key.data.file_name = payload[:file_name_length]
+                        key.data.inb = payload[file_name_length:]
 
                         # Applies to status codes
 
@@ -196,8 +193,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Length of payload and request for acknowledgment bytes
                         # TODO: Open to add more metadata later
                         print("Packing data ...")
-                        payload = key.data.outb
-                        payload_length = len(payload)
+                        # payload = key.data.outb
                         if key.data.outb in vars(constants).values(): # Check if the payload is a constant
                             data_type = STATUS_CODE
                         else:
@@ -207,11 +203,15 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Keeps the same header format even if client is not sending a file
                         if not key.data.file_name or type(key.data.file_name) == str:
                             key.data.file_name = BYTES_NONE
-                        # if not key.data.data_subtype or type(key.data.data_subtype) == int:
+                        # if not key.data.data_subtype:
                         #     key.data.data_subtype = INT_NONE
 
+                        payload = key.data.file_name + key.data.outb
+                        payload_length = len(payload)
+
                         # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype) + key.data.file_name
+                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype)
+                        
                         key.data.outb = header + payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 
