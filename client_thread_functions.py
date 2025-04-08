@@ -163,6 +163,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         response_event.set() # Set completion flag for completed connection
 
                     if header:
+                        aes_key = b'\xed\x93r\xe1\xe9\x10\xfc\x1d[u\xf2\x0e\xdaQG\x93w&9S\x0e\xde\x92\x7f\xdbc\r\x19O\xc4\xc4T' # TODO: Change to get from DB
+                        nonce = connection_socket.recv(NONCE_LENGTH)
+                        tag = connection_socket.recv(TAG_LENGTH)
+                        decryption_cipher = AES.new(aes_key, AES.MODE_GCM, nonce=nonce)
+                        
                         payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
                         # key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
                         print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
@@ -173,7 +178,13 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 print("Connection closed before receiving the full payload.")
                                 return INCOMPLETE_PAYLOAD_ERROR
                             payload += chunk
-                        key.data.inb = payload
+
+                        print(payload)
+
+                        print(f"Nonce: {nonce}")
+                        print(f"Tag: {tag}")
+
+                        payload = decryption_cipher.decrypt_and_verify(payload, tag)
 
                         key.data.file_name = payload[:file_name_length]
                         key.data.inb = payload[file_name_length:]
@@ -257,7 +268,14 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Only packs integers
                         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype)
                         
-                        key.data.outb = header + payload
+                        nonce, encrypted_payload, tag, _ = payload_encryption(payload)
+
+                        print(f"Payload: {encrypted_payload}")
+                        print(f"Nonce: {nonce}")
+                        print(f"Tag: {tag}")
+
+
+                        key.data.outb = header + nonce + tag + encrypted_payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
 
                         # Sends header + payload

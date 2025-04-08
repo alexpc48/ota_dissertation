@@ -137,3 +137,13 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
 #             return INCOMPLETE_PAYLOAD_ERROR
 #         payload += chunk
 #     key.data.inb = payload
+
+
+from Crypto.Cipher import AES
+
+def payload_encryption(payload: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
+    aes_key = b'\xed\x93r\xe1\xe9\x10\xfc\x1d[u\xf2\x0e\xdaQG\x93w&9S\x0e\xde\x92\x7f\xdbc\r\x19O\xc4\xc4T' # TODO: Change to get from DB
+    encryption_cipher = AES.new(aes_key, AES.MODE_GCM)
+    nonce = encryption_cipher.nonce
+    encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
+    return nonce, encrypted_payload, tag, SUCCESS

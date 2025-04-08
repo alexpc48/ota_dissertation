@@ -55,3 +55,5 @@ UPDATE_FILE = 2
 PACK_COUNT_BYTES = 16 # Number of bytes in the header (4 integers)
 PACK_DATA_COUNT = '!IIII' # 4 Integers in the header
 UPDATE_VERSION_PUSH = 3 # A client is pushing their version number to the server
+TAG_LENGTH = 16
+NONCE_LENGTH = 16
