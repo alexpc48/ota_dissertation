@@ -37,12 +37,14 @@ if __name__=='__main__':
         file3 = 'updates\\router_firmware.w'
         file4 = 'updates\\popeye.png'
         file5 = 'updates\\bugs_bunny.jpg'
+        file6 = 'updates\\daffy_duck.png'
     elif os_type == "Linux":
         file1 = 'updates/snoopy.png'
         file2 = 'updates/dban.iso'
         file3 = 'updates/router_firmware.w'
         file4 = 'updates/popeye.png'
         file5 = 'updates/bugs_bunny.jpg'
+        file6 = 'updates/daffy_duck.png'
 
     print("Setting up server database ...")
     db_connection = sqlite3.connect("server_ota_updates.db")
@@ -104,10 +106,10 @@ if __name__=='__main__':
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
                     ('1.0.3.png', file_data))
-    file_data, _ = get_update_file(file5)
+    file_data, _ = get_update_file(file6)
     cursor.execute('''INSERT INTO updates (update_version, update_file)
                     VALUES (?, ?)''',
-                    ('1.0.4.jpg', file_data))
+                    ('1.0.5.jpg', file_data))
 
     db_connection.commit()
     db_connection.close()
