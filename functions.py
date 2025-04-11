@@ -132,8 +132,10 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
         # Receive packed data (integers)
         print("Receiving header ...")
         header = connection_socket.recv(PACK_COUNT_BYTES)
-        if not header: # Closes connection if no data is received from the remote connection
-            CONNECTION_CLOSE_ERROR
+        print(f"Header: {header}")
+        if header == BYTES_NONE: # Closes connection if no data is received from the remote connection
+            print("No data received.")
+            return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, CONNECTION_CLOSE_ERROR
 
         # Continue if data is received
         # Data arrives as header -> nonce -> tag -> payload
@@ -141,7 +143,9 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             # Receive the nonce and tag
             print("Receiving nonce and tag ...")
             nonce = connection_socket.recv(NONCE_LENGTH)
+            print(f"Nonce: {nonce}")
             tag = connection_socket.recv(TAG_LENGTH)
+            print(f"Tag: {tag}")
 
             # Unpack the header
             payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
@@ -152,17 +156,17 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
                 chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
                 if not chunk:
                     print("Connection closed before receiving the full payload.")
-                    return INCOMPLETE_PAYLOAD_ERROR
+                    return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, INCOMPLETE_PAYLOAD_ERROR
                 payload += chunk
 
-            # print(f"Payload: {payload}")
+            print(f"Payload: {payload}")
             # print(f"Nonce: {nonce}")
             # print(f"Tag: {tag}")
             
             payload, ret_val = payload_decryption(payload, nonce, tag, ENCRYPTION_ALGORITHM) # Decrypt the payload
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
-                return PAYLOAD_DECRYPTION_ERROR
+                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_DECRYPTION_ERROR
             
             file_name = payload[:file_name_length]
             data_inb = payload[file_name_length:]
@@ -201,7 +205,14 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> t
         # print(f"Nonce: {nonce}")
         # print(f"Tag: {tag}")
 
+        # DEBUG ONLY
+        if ENCRYPTION_ALGORITHM == 'NONE':
+            nonce = random.randbytes(NONCE_LENGTH)
+            tag = random.randbytes(TAG_LENGTH)
+
         data_to_send = header + nonce + tag + encrypted_payload
+
+        # print(data_to_send)
 
         return data_to_send, SUCCESS
 
