@@ -154,7 +154,14 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             print("Receiving payload ...")
             payload = BYTES_NONE # Initialise variable
             while len(payload) < payload_length:
-                chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                try:
+                    chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                except BlockingIOError as e:
+                    print(f"BlockingIOError: {e}")
+                    if e.errno == errno.EAGAIN:
+                        print("Resource temporarily unavailable. Retrying ...")
+                        time.sleep(1) # Wait for a second before retrying
+                        continue
                 if not chunk:
                     print("Connection closed before receiving the full payload.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, INCOMPLETE_PAYLOAD_ERROR
