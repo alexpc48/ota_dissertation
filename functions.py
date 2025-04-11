@@ -95,7 +95,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 data.connected = True
                 print("[SYN-ACK]")
                 break
-            elif err == 10035 or err == errno.EINPROGRESS: # Non-blocking connection in progress
+            elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY: # Non-blocking connection in progress
                 print(f"Connection to {host}:{port} in progress ...")
                 continue
             elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
