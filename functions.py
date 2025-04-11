@@ -158,6 +158,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
                 if not chunk:
                     print("Connection closed before receiving the full payload.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, INCOMPLETE_PAYLOAD_ERROR
+                print(chunk)
                 payload += chunk
 
             print(f"Payload: {payload}")
