@@ -97,6 +97,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 break
             elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY: # Non-blocking connection in progress
                 print(f"Connection to {host}:{port} in progress ...")
+                time.sleep(1)
                 continue
             elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
                 print("No device found at the specified address.")
@@ -170,6 +171,8 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             
             file_name = payload[:file_name_length]
             data_inb = payload[file_name_length:]
+            print(f"File name: {file_name}")
+            # print(f"Payload: {data_inb}")
 
             return file_name, data_inb, data_type, data_subtype, SUCCESS
 

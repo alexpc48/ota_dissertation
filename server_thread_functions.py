@@ -139,6 +139,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
                             print("Update download request received.")
                             key.data.file_name, file_data, _ = get_update_file()
+                            print(key.data.file_name)
                             key.data.outb = file_data
                             key.data.data_subtype = UPDATE_FILE
 
@@ -167,12 +168,13 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = DATA_RECEIVED_ACK
 
                     key.data.inb = BYTES_NONE  # Clear the input buffer
-                    key.data.file_name = BYTES_NONE
+                    # key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
                         print("Creating payload ...")
+                        print(key.data.file_name)
                         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype)
                         if ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")

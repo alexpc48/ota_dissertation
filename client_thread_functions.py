@@ -193,6 +193,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
                                 if ret_val == SUCCESS:
                                     print("Update file written to database successfully.")
+                                    key.data.file_name = BYTES_NONE
                                 elif ret_val == DOWNLOAD_UPDATE_ERROR:
                                     print("Error: Failed to write update file to database.")
                                     return DOWNLOAD_UPDATE_ERROR
@@ -211,7 +212,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = DATA_RECEIVED_ACK
 
                     key.data.inb = BYTES_NONE  # Clear the input buffer
-                    key.data.file_name = BYTES_NONE
+                    # key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:

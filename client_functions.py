@@ -298,7 +298,7 @@ def write_update_file_to_database(update_file_name: str, file_data: bytes) -> in
         
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
-        print(type(update_file_name))
+        print(update_file_name)
         cursor.execute('''INSERT INTO update_downloads (update_version, update_file)
                     VALUES (?, ?)''',
                     (update_file_name, file_data))
