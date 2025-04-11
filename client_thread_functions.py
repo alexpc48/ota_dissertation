@@ -6,9 +6,9 @@ import os
 import struct
 import random
 import re
-import constants
 from constants import *
 from client_functions import *
+from cryptographic_functions import *
 
 # (Use of AI) Thread for displaying the options menu in a non-blocking way
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
@@ -153,132 +153,77 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 
                 # Read events
                 if mask & selectors.EVENT_READ:
-                    key.data.file_name = BYTES_NONE # Initialise variable
-                    # Read the packet header
-                    # Receive packed data (integers)
-                    header = connection_socket.recv(PACK_COUNT_BYTES)
-                    if not header: # Closes connection if no data is received from the remote connection
+                    print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket)
+                    if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
                         response_event.set() # Set completion flag for completed connection
+                    if ret_val == PAYLOAD_RECEIVE_ERROR:
+                        print("Error: Failed to receive payload.")
+                        return PAYLOAD_RECEIVE_ERROR
 
-                    if header:
-                        aes_key = b'\xed\x93r\xe1\xe9\x10\xfc\x1d[u\xf2\x0e\xdaQG\x93w&9S\x0e\xde\x92\x7f\xdbc\r\x19O\xc4\xc4T' # TODO: Change to get from DB
-                        nonce = connection_socket.recv(NONCE_LENGTH)
-                        tag = connection_socket.recv(TAG_LENGTH)
-                        decryption_cipher = AES.new(aes_key, AES.MODE_GCM, nonce=nonce)
+                    # Applies to status codes
+
+                    if key.data.inb == UPDATE_AVALIABLE:
+                        print("There is an update available.")
+                        response_data["update_available"] = True
                         
-                        payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
-                        # key.data.file_name = connection_socket.recv(file_name_length) # Won't evaluate to anything if no file data is sent
-                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                        payload = b''
-                        while len(payload) < payload_length:
-                            chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
-                            if not chunk:
-                                print("Connection closed before receiving the full payload.")
-                                return INCOMPLETE_PAYLOAD_ERROR
-                            payload += chunk
+                    elif key.data.inb == UPDATE_NOT_AVALIABLE:
+                        print("There is no update available.")
+                        response_data["update_available"] = False
 
-                        print(payload)
+                    elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
+                        print("Update readiness status request received.")
+                        update_readiness, _, _ = check_update_readiness_status()
+                        if update_readiness == True:
+                            print("Client is ready to receive the update.")
+                            key.data.outb = UPDATE_READY
+                        elif update_readiness == False:
+                            print("Client is not ready to receive the update.")
+                            key.data.outb = UPDATE_NOT_READY
 
-                        print(f"Nonce: {nonce}")
-                        print(f"Tag: {tag}")
+                    elif key.data.inb == UPDATE_VERSION_REQUEST:
+                        print("Update version request received.")
+                        _, update_version_bytes, _ = get_update_version()
+                        key.data.outb = update_version_bytes
+                        key.data.data_subtype = UPDATE_VERSION
 
-                        payload = decryption_cipher.decrypt_and_verify(payload, tag)
+                    elif data_type == DATA:
+                        if data_subtype == UPDATE_FILE:
+                            ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
+                            if ret_val == SUCCESS:
+                                print("Update file written to database successfully.")
+                            elif ret_val == DOWNLOAD_UPDATE_ERROR:
+                                print("Error: Failed to write update file to database.")
+                                return DOWNLOAD_UPDATE_ERROR
+                            else:
+                                print("An error occurred while retrieving the database name.")
+                                print("Please check the logs for more details.")
+                                return ERROR
 
-                        key.data.file_name = payload[:file_name_length]
-                        key.data.inb = payload[file_name_length:]
-
-                        # Applies to status codes
-
-                        if key.data.inb == UPDATE_AVALIABLE:
-                            print("There is an update available.")
-                            response_data["update_available"] = True
-                            
-                        elif key.data.inb == UPDATE_NOT_AVALIABLE:
-                            print("There is no update available.")
-                            response_data["update_available"] = False
-
-                        elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
-                            print("Update readiness status request received.")
-                            update_readiness, _, _ = check_update_readiness_status()
-                            if update_readiness == True:
-                                print("Client is ready to receive the update.")
-                                key.data.outb = UPDATE_READY
-                            elif update_readiness == False:
-                                print("Client is not ready to receive the update.")
-                                key.data.outb = UPDATE_NOT_READY
-
-                        elif key.data.inb == UPDATE_VERSION_REQUEST:
-                            print("Update version request received.")
-                            _, update_version_bytes, _ = get_update_version()
-                            key.data.outb = update_version_bytes
-                            key.data.data_subtype = UPDATE_VERSION
-
-                        # TODO: May need changing in future as this assumes client only ever receives files
-                        elif data_type == DATA:
-                            if data_subtype == UPDATE_FILE:
-                                ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
-                                if ret_val == SUCCESS:
-                                    print("Update file written to database successfully.")
-                                elif ret_val == DOWNLOAD_UPDATE_ERROR:
-                                    print("Error: Failed to write update file to database.")
-                                    return DOWNLOAD_UPDATE_ERROR
-                                else:
-                                    print("An error occurred while retrieving the database name.")
-                                    print("Please check the logs for more details.")
-                                    return ERROR
-
-                        if key.data.inb == DATA_RECEIVED_ACK:
-                            print("The data was received by the server.")
-                            print(f"Connection closed by {remote_host}:{remote_port}.")
-                            _ = close_connection(connection_socket, selector)
-                            response_event.set() # Set completion flag for completed connection
-                            # return SUCCESS
+                    if key.data.inb == DATA_RECEIVED_ACK:
+                        print("The data was received.")
+                        print(f"Connection closed by {remote_host}:{remote_port}.")
+                        _ = close_connection(connection_socket, selector)
+                        response_event.set() # Set completion flag for completed connection
                         
-                        elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
-                            key.data.outb = DATA_RECEIVED_ACK
+                    elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                        key.data.outb = DATA_RECEIVED_ACK
 
-                        key.data.inb = BYTES_NONE  # Clear the input buffer
-                        key.data.file_name = BYTES_NONE
+                    key.data.inb = BYTES_NONE  # Clear the input buffer
+                    key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
-                        # Write extra header metadata
-                        # Length of payload and request for acknowledgment bytes
-                        # TODO: Open to add more metadata later
-                        print("Packing data ...")
-                        # payload = key.data.outb
-                        if key.data.outb in vars(constants).values(): # Check if the payload is a constant
-                            data_type = STATUS_CODE
-                        else:
-                            data_type = DATA
-
-                        # TODO: Send file name as key.data.outb instead
-                        # Keeps the same header format even if client is not sending a file
-                        if not key.data.file_name or type(key.data.file_name) == str:
-                            key.data.file_name = BYTES_NONE
-                        # if not key.data.data_subtype:
-                        #     key.data.data_subtype = INT_NONE
-
-                        payload = key.data.file_name + key.data.outb
-                        payload_length = len(payload)
-
-                        # Only packs integers
-                        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(key.data.file_name), key.data.data_subtype)
+                        print("Creating payload ...")
+                        key.data.oub, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype)
+                        if ret_val == PAYLOAD_CREATION_ERROR:
+                            print("Error: Failed to create payload.")
+                            return PAYLOAD_CREATION_ERROR
                         
-                        nonce, encrypted_payload, tag, _ = payload_encryption(payload)
-
-                        print(f"Payload: {encrypted_payload}")
-                        print(f"Nonce: {nonce}")
-                        print(f"Tag: {tag}")
-
-
-                        key.data.outb = header + nonce + tag + encrypted_payload
                         print(f"Sending data {key.data.outb} to {remote_host}:{remote_port} ...")
-
-                        # Sends header + payload
                         while key.data.outb:
                             sent = connection_socket.send(key.data.outb)
                             key.data.outb = key.data.outb[sent:]

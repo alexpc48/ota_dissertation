@@ -4,12 +4,15 @@
 # Libraries
 import socket
 import selectors
+import struct
 import types
 import typing
 import errno
 import random
 import time
+import constants
 from constants import *
+from cryptographic_functions import *
 
 def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
@@ -121,29 +124,87 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
 
-# def receive_header(header: bytes):
-#     if not header: # Closes connection if no data is received from the remote connection
-#         print(f"Connection closed by {remote_host}:{remote_port}.")
-#         _ = close_connection(connection_socket, selector)
-#         response_event.set() # Set completion flag for completed connection
+def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, bytes, int, int, int]:
+    try:
+        file_name = BYTES_NONE # Initialise variable
 
-#     payload_length, data_type, file_name = struct.unpack('!III', header)
-#     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-#     payload = b''
-#     while len(payload) < payload_length:
-#         chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
-#         if not chunk:
-#             print("Connection closed before receiving the full payload.")
-#             return INCOMPLETE_PAYLOAD_ERROR
-#         payload += chunk
-#     key.data.inb = payload
+        # Read the packet header
+        # Receive packed data (integers)
+        print("Receiving header ...")
+        header = connection_socket.recv(PACK_COUNT_BYTES)
+        if not header: # Closes connection if no data is received from the remote connection
+            CONNECTION_CLOSE_ERROR
 
+        # Continue if data is received
+        # Data arrives as header -> nonce -> tag -> payload
+        if header:
+            # Receive the nonce and tag
+            print("Receiving nonce and tag ...")
+            nonce = connection_socket.recv(NONCE_LENGTH)
+            tag = connection_socket.recv(TAG_LENGTH)
 
-from Crypto.Cipher import AES
+            # Unpack the header
+            payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
 
-def payload_encryption(payload: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
-    aes_key = b'\xed\x93r\xe1\xe9\x10\xfc\x1d[u\xf2\x0e\xdaQG\x93w&9S\x0e\xde\x92\x7f\xdbc\r\x19O\xc4\xc4T' # TODO: Change to get from DB
-    encryption_cipher = AES.new(aes_key, AES.MODE_GCM)
-    nonce = encryption_cipher.nonce
-    encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
-    return nonce, encrypted_payload, tag, SUCCESS
+            print("Receiving payload ...")
+            payload = BYTES_NONE # Initialise variable
+            while len(payload) < payload_length:
+                chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                if not chunk:
+                    print("Connection closed before receiving the full payload.")
+                    return INCOMPLETE_PAYLOAD_ERROR
+                payload += chunk
+
+            # print(f"Payload: {payload}")
+            # print(f"Nonce: {nonce}")
+            # print(f"Tag: {tag}")
+            
+            payload, ret_val = payload_decryption(payload, nonce, tag, ENCRYPTION_ALGORITHM) # Decrypt the payload
+            if ret_val != SUCCESS:
+                print("Error during payload decryption.")
+                return PAYLOAD_DECRYPTION_ERROR
+            
+            file_name = payload[:file_name_length]
+            data_inb = payload[file_name_length:]
+
+            return file_name, data_inb, data_type, data_subtype, SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_RECEIVE_ERROR
+
+def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> typing.Tuple[bytes, int]:
+    try:
+        if data_to_send in vars(constants).values(): # Check if the payload is a constant
+            data_type = STATUS_CODE
+        else:
+            data_type = DATA
+
+        # Keeps the same header format even if client is not sending a file
+        if not file_name or type(file_name) == str:
+            file_name = BYTES_NONE
+        # if not data_subtype:
+        #     data_subtype = INT_NONE
+
+        payload = file_name + data_to_send
+        payload_length = len(payload)
+
+        # Only packs integers for the header
+        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
+        
+        nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, ENCRYPTION_ALGORITHM)
+        if ret_val != SUCCESS:
+            print("Error during payload encryption.")
+            return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
+
+        # print(f"Payload: {encrypted_payload}")
+        # print(f"Nonce: {nonce}")
+        # print(f"Tag: {tag}")
+
+        data_to_send = header + nonce + tag + encrypted_payload
+
+        return data_to_send, SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return BYTES_NONE, PAYLOAD_CREATION_ERROR
