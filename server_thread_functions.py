@@ -113,7 +113,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 if mask & selectors.EVENT_READ:
                     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
                     
-                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket, encryption_key)
+                    key.data.file_name, key.data.inb, data_type, data_subtype, key.data.identifier, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
@@ -123,9 +123,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         return PAYLOAD_RECEIVE_ERROR
                     
                     if ret_val == SUCCESS:
-                        key.data.identifier = key.data.inb[:IDENTIFIER_LENGTH] # Identifier is sent as part of payload from the client
-                        key.data.inb = key.data.inb[IDENTIFIER_LENGTH:] # Remove identifier from the payload
-                        print(key.data.identifier.decode())
+                        print(key.data.inb)
 
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")

@@ -9,6 +9,8 @@ import types
 import typing
 import errno
 import random
+import sqlite3
+import os
 import time
 import constants
 from constants import *
@@ -35,13 +37,18 @@ def close_connection(connection_socket: socket.socket, selector: selectors.Selec
         print(f"An error occurred: {e}")
         return ERROR
     
+LISTENING_SOCKET_INFO = None # Global variable to store the listening socket information
 def create_listening_socket(host: str, port: int, selector: selectors.SelectSelector) -> int:
+    global LISTENING_SOCKET_INFO
     try:
         print(f"Creating listening socket on {host}:{port} ...")
         listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listening_socket.bind((host, port))
         listening_socket.listen()
         listening_socket.setblocking(False)
+
+        LISTENING_SOCKET_INFO = listening_socket.getsockname()
+        print(LISTENING_SOCKET_INFO)
 
         # Register the listening socket with the selector
         selector.register(listening_socket, selectors.EVENT_READ, data="listening_socket")
@@ -125,7 +132,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
 
-def receive_payload(connection_socket: socket.socket, encryption_key) -> typing.Tuple[bytes, bytes, int, int, int]:
+def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
         file_name = BYTES_NONE # Initialise variable
 
@@ -136,10 +143,11 @@ def receive_payload(connection_socket: socket.socket, encryption_key) -> typing.
         print(f"Header: {header}")
         if header == BYTES_NONE: # Closes connection if no data is received from the remote connection
             print("No data received.")
-            return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, CONNECTION_CLOSE_ERROR
+            return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
 
         # Continue if data is received
-        # Data arrives as header -> nonce -> tag -> payload
+        # Data arrives as header -> nonce -> tag -> identifier -> payload
+        # Identifier not sensitive - in application could be the VIN
         if header:
             # Receive the nonce and tag
             print("Receiving nonce and tag ...")
@@ -147,7 +155,28 @@ def receive_payload(connection_socket: socket.socket, encryption_key) -> typing.
             print(f"Nonce: {nonce}")
             tag = connection_socket.recv(TAG_LENGTH)
             print(f"Tag: {tag}")
+            
+            identifier = (connection_socket.recv(IDENTIFIER_LENGTH)).decode()
+            print(f"Identifier: {identifier}")
 
+            _, port = LISTENING_SOCKET_INFO
+            if port == SERVER_PORT:
+                database = os.getenv("SERVER_DATABASE")
+                query = f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = '{identifier}' LIMIT 1"
+            elif port == WINDOWS_PORT:
+                database = os.getenv("WINDOWS_CLIENT_DATABASE")
+                query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
+            elif port == LINUX_PORT:
+                database = os.getenv("LINUX_CLIENT_DATABASE")
+                query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
+
+            # Retrieve key based on the encryption algorithm
+            print(f"Retrieving encryption key from {database} ...")
+            db_connection = sqlite3.connect(database)
+            cursor = db_connection.cursor()
+            encryption_key = (cursor.execute(query)).fetchone()[0]
+            db_connection.close()
+                    
             # Unpack the header
             payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
 
@@ -164,29 +193,28 @@ def receive_payload(connection_socket: socket.socket, encryption_key) -> typing.
                         continue
                 if not chunk:
                     print("Connection closed before receiving the full payload.")
-                    return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, INCOMPLETE_PAYLOAD_ERROR
-                print(chunk)
+                    return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INCOMPLETE_PAYLOAD_ERROR
                 payload += chunk
 
-            print(f"Payload: {payload}")
+            # print(f"Payload: {payload}")
             # print(f"Nonce: {nonce}")
             # print(f"Tag: {tag}")
             
             payload, ret_val = payload_decryption(payload, nonce, tag, encryption_key) # Decrypt the payload
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
-                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_DECRYPTION_ERROR
+                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
             
             file_name = payload[:file_name_length]
             data_inb = payload[file_name_length:]
             print(f"File name: {file_name}")
-            # print(f"Payload: {data_inb}")
+            print(f"Payload: {data_inb}")
 
-            return file_name, data_inb, data_type, data_subtype, SUCCESS
+            return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_RECEIVE_ERROR
+        return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
 
 def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
@@ -202,6 +230,8 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         payload = file_name + data_to_send
         payload_length = len(payload)
 
+        print(f'Payload to send: {payload}')
+
         # Only packs integers for the header
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
         
@@ -214,7 +244,21 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         # print(f"Nonce: {nonce}")
         # print(f"Tag: {tag}")
 
-        data_to_send = header + nonce + tag + encrypted_payload
+        # Retrieve identifier
+        _, port = LISTENING_SOCKET_INFO
+        if port == SERVER_PORT:
+            database = os.getenv("SERVER_DATABASE")
+        elif port == WINDOWS_PORT:
+            database = os.getenv("WINDOWS_CLIENT_DATABASE")
+        elif port == LINUX_PORT:
+            database = os.getenv("LINUX_CLIENT_DATABASE")
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+        db_connection.close()
+
+        data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
 
         # print(data_to_send)
 

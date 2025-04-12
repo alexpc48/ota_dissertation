@@ -68,7 +68,8 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS network_information (
                     network_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     local_ip TEXT,
-                    local_port INTEGER
+                    local_port INTEGER,
+                    identifier TEXT
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS vehicles (
@@ -92,7 +93,7 @@ if __name__=='__main__':
     print("Adding data to the server database ...")
    
     # Linux laptop
-    # UUID = c42157c2-9526-b07c-7e43-b4a9fc957957
+    # UUID = C42157C2-9526-B07C-7E43-B4A9FC957957
     cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256)
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
                     ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client))
@@ -103,9 +104,10 @@ if __name__=='__main__':
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
                     ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client))
     
-    cursor.execute('''INSERT INTO network_information (local_ip, local_port)
-                    VALUES (?, ?)''',
-                    (server_ip, server_port))
+    # Server UUID = 5B8DECB9-2A5B-48FA-966B-673B9A731C1F
+    cursor.execute('''INSERT INTO network_information (local_ip, local_port, identifier)
+                    VALUES (?, ?, ?)''',
+                    (server_ip, server_port, '5B8DECB9-2A5B-48FA-966B-673B9A731C1F'))
     
     # Example updates
     file_data, _ = get_update_file(file1)

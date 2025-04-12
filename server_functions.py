@@ -31,7 +31,7 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
-def get_client_network_information() -> typing.Tuple[int, str, int, int]:
+def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # Not using a default database
@@ -53,10 +53,13 @@ def get_client_network_information() -> typing.Tuple[int, str, int, int]:
         # AI help for next() function
         selected_vehicle = next((v for v in query_result if v[0] == vehicle_id_input), None)
 
+        identifier = selected_vehicle[1]
         client_host = selected_vehicle[2]
         client_port = selected_vehicle[3]
 
-        return vehicle_id_input, client_host, client_port, SUCCESS
+        print(identifier)
+
+        return vehicle_id_input, identifier, client_host, client_port, SUCCESS
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -64,7 +67,7 @@ def get_client_network_information() -> typing.Tuple[int, str, int, int]:
 
 def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        vehicle_entry_id, client_host, client_port, ret_val = get_client_network_information()
+        vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -82,6 +85,8 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
             return ERROR
 
         key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
 
         print("Preparing data to send ...")
         key.data.outb = UPDATE_VERSION_REQUEST
@@ -124,7 +129,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
 
 def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
     try:
-        _, client_host, client_port, ret_val = get_client_network_information()
+        _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -142,6 +147,8 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
             return ERROR
 
         key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
 
         print("Preparing data to send ...")
         key.data.outb = UPDATE_READINESS_STATUS_REQUEST
@@ -175,7 +182,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
     
 def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
-        _, client_host, client_port, ret_val = get_client_network_information()
+        _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == SUCCESS:
             print("Retreived client information.")
         else:
@@ -193,6 +200,8 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             return ERROR
 
         key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
 
         print("Preparing data to send ...")
         key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access

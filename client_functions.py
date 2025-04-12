@@ -31,7 +31,6 @@ def options_menu() -> str:
     print("-------------------------------------------------------------------------------------------")
 
     return input("Enter an option: ")
-
 def get_os_type() -> typing.Tuple[str, int]:
     try:
         os_type = platform.system()
@@ -47,7 +46,7 @@ def get_os_type() -> typing.Tuple[str, int]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return STR_NONE, ERROR
-
+    
 def get_client_database() -> typing.Tuple[str, int]:
     try:
         os_type, ret_val = get_os_type()
@@ -148,21 +147,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         key = selector.get_key(connection_socket)
 
         print("Preparing data to send ...")
-
-        database, ret_val = get_client_database()
-        if ret_val == SUCCESS:
-            print("Database name retrieved successfully.")
-        else:
-            print("An error occurred while retrieving the database name.")
-            print("Please check the logs for more details.")
-            return BOOL_NONE, BYTES_NONE, ERROR
-        
-        db_connection = sqlite3.connect(database)
-        cursor = db_connection.cursor()
-        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
-        db_connection.close()
-
-        key.data.outb = str.encode(identifier) + UPDATE_CHECK_REQUEST
+        key.data.outb = UPDATE_CHECK_REQUEST
         print("Data ready to send.")
 
         response_event.clear()
@@ -255,21 +240,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         key = selector.get_key(connection_socket)
         
         print("Preparing data to send ...")
-
-        database, ret_val = get_client_database()
-        if ret_val == SUCCESS:
-            print("Database name retrieved successfully.")
-        else:
-            print("An error occurred while retrieving the database name.")
-            print("Please check the logs for more details.")
-            return BOOL_NONE, BYTES_NONE, ERROR
-        
-        db_connection = sqlite3.connect(database)
-        cursor = db_connection.cursor()
-        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
-        db_connection.close()
-
-        key.data.outb = str.encode(identifier) + UPDATE_DOWNLOAD_REQUEST
+        key.data.outb = UPDATE_DOWNLOAD_REQUEST
         print("Data ready to send.")
 
         response_event.clear()
