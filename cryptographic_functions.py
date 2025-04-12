@@ -37,3 +37,11 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
     except Exception as e:
         print(f"An error occurred during payload encryption: {e}")
         return BYTES_NONE, ERROR
+
+# # Using ED25591 for signing and verifying only (at the moment)
+# from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+# def eddsa_signing():
+#     private_key = Ed25519PrivateKey.generate()
+#     signature = private_key.sign(b"my authenticated message")
+#     public_key = private_key.public_key()
+#     public_key.verify(signature, b"my authenticated message")

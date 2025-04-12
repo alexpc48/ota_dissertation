@@ -61,6 +61,23 @@ if __name__=='__main__':
             aes_128_windows_client = f.read()
         with open("helpers/aes_256_windows_client.key", "rb") as f:
             aes_256_windows_client = f.read()
+    
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    # from cryptography.hazmat.primitives import serialization
+    # from cryptography.hazmat.primitives.asymmetric import ed25519
+    server_eddsa_private_key = Ed25519PrivateKey.generate()
+    server_eddsa_public_key = server_eddsa_private_key.public_key()
+    windows_eddsa_private_key = Ed25519PrivateKey.generate()
+    windows_eddsa_public_key = windows_eddsa_private_key.public_key()
+    linux_eddsa_private_key = Ed25519PrivateKey.generate()
+    linux_eddsa_public_key = linux_eddsa_private_key.public_key()
+    
+    server_eddsa_private_key = server_eddsa_private_key.private_bytes_raw()
+    server_eddsa_public_key = server_eddsa_public_key.public_bytes_raw()
+    windows_eddsa_private_key = windows_eddsa_private_key.private_bytes_raw()
+    windows_eddsa_public_key = windows_eddsa_public_key.public_bytes_raw()
+    linux_eddsa_private_key = linux_eddsa_private_key.private_bytes_raw()
+    linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
 
     print("Setting up server database ...")
     db_connection = sqlite3.connect("server_ota_updates.db")
@@ -81,7 +98,9 @@ if __name__=='__main__':
                     vehicle_port INTEGER,
                     last_poll_time TIMESTAMP,
                     aes_128 BLOB,
-                    aes_256 BLOB
+                    aes_256 BLOB,
+                    ed25519_private_key BLOB,
+                    ed25519_public_key BLOB
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS updates (
@@ -90,24 +109,34 @@ if __name__=='__main__':
                     update_file BLOB
                     )''')
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
+                    cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ed25519_private_key BLOB,
+                    ed25519_public_key BLOB
+                    )''')
+    
     print("Adding data to the server database ...")
    
     # Linux laptop
     # UUID = C42157C2-9526-B07C-7E43-B4A9FC957957
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
-                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_private_key, ed25519_public_key)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)''',
+                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client, linux_eddsa_private_key, linux_eddsa_public_key))
 
     # Windows laptop
     # UUID = CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
-                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_private_key, ed25519_public_key)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)''',
+                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client, windows_eddsa_private_key, windows_eddsa_public_key))
     
     # Server UUID = 5B8DECB9-2A5B-48FA-966B-673B9A731C1F
     cursor.execute('''INSERT INTO network_information (local_ip, local_port, identifier)
                     VALUES (?, ?, ?)''',
                     (server_ip, server_port, '5B8DECB9-2A5B-48FA-966B-673B9A731C1F'))
+    
+    cursor.execute('''INSERT INTO cryptographic_data (ed25519_private_key, ed25519_public_key)
+                    VALUES (?, ?)''',
+                    (server_eddsa_private_key, server_eddsa_public_key))
     
     # Example updates
     file_data, _ = get_update_file(file1)
@@ -174,7 +203,11 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
                     cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     aes_128 BLOB,
-                    aes_256 BLOB
+                    aes_256 BLOB,
+                    ed25519_private_key BLOB,
+                    ed25519_public_key BLOB,
+                    server_ed25519_private_key BLOB,
+                    server_ed25519_public_key BLOB
                     )''')
     
     print("Adding data to the Windows client database ...")
@@ -187,9 +220,9 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.2.w', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256)
-                    VALUES (?, ?)''',
-                    (aes_128_windows_client, aes_256_windows_client))
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_private_key, server_ed25519_public_key)
+                    VALUES (?, ?, ?, ?, ?, ?)''',
+                    (aes_128_windows_client, aes_256_windows_client, windows_eddsa_private_key, windows_eddsa_public_key, server_eddsa_private_key, server_eddsa_public_key))
     
     db_connection.commit()
     db_connection.close()
@@ -232,10 +265,12 @@ if __name__=='__main__':
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
-                cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                aes_128 BLOB,
-                aes_256 BLOB
-                )''')
+                    cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    aes_128 BLOB,
+                    aes_256 BLOB,
+                    ed25519_private_key BLOB,
+                    ed25519_public_key BLOB
+                    )''')
 
     print("Adding data to the Linux database ...")
     cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port, identifier)
@@ -247,9 +282,9 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.3.png', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256)
-                    VALUES (?, ?)''',
-                    (aes_128_linux_client, aes_256_linux_client))
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key)
+                    VALUES (?, ?, ?, ?)''',
+                    (aes_128_linux_client, aes_256_linux_client, linux_eddsa_private_key, linux_eddsa_public_key))
     
     db_connection.commit()
     db_connection.close()

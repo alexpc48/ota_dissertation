@@ -49,7 +49,6 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         listening_socket.setblocking(False)
 
         LISTENING_SOCKET_INFO = listening_socket.getsockname()
-        print(LISTENING_SOCKET_INFO)
 
         # Register the listening socket with the selector
         selector.register(listening_socket, selectors.EVENT_READ, data="listening_socket")
@@ -164,12 +163,15 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             if port == SERVER_PORT:
                 database = os.getenv("SERVER_DATABASE")
                 query = f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = '{identifier}' LIMIT 1"
+                sign_query = f"SELECT {SIGNATURE_ALGORITHM}_public_key FROM vehicles WHERE vehicle_id = '{identifier}' LIMIT 1"
             elif port == WINDOWS_PORT:
                 database = os.getenv("WINDOWS_CLIENT_DATABASE")
                 query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
+                sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
             elif port == LINUX_PORT:
                 database = os.getenv("LINUX_CLIENT_DATABASE")
                 query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
+                sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
 
             # Retrieve key based on the encryption algorithm
             print(f"Retrieving encryption key from {database} ...")
@@ -209,19 +211,32 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             file_name = payload[:file_name_length]
             print(f"File name: {file_name}")
 
-            print(data_subtype)
-
             if data_subtype == UPDATE_FILE and SECURITY == 1:
                 print('hello')
-                data_inb = payload[file_name_length:payload_length - HASH_SIZE]
+                data_inb = payload[file_name_length:payload_length - HASH_SIZE - ED25591_SIGNATURE_SIZE]
                 # print(f"Payload: {data_inb}")
-                update_file_hash = (payload[payload_length - HASH_SIZE:payload_length]).decode()
+                update_file_hash = (payload[payload_length - HASH_SIZE - ED25591_SIGNATURE_SIZE:payload_length - ED25591_SIGNATURE_SIZE]).decode()
                 print(f"Received hash: {update_file_hash}")
                 generated_hash = hashlib.sha256(data_inb).hexdigest()
                 print(f"Generated hash: {generated_hash}")
                 if update_file_hash != generated_hash:
                     print("Hash mismatch. Payload not valid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INVALID_PAYLOAD_ERROR
+                signature = payload[payload_length - ED25591_SIGNATURE_SIZE:payload_length]
+                print(f"Signature: {signature}")
+                print(f"Retrieving signature public key from {database} ...")
+                db_connection = sqlite3.connect(database)
+                cursor = db_connection.cursor()
+                result = (cursor.execute(sign_query)).fetchone()
+                db_connection.close()
+                from cryptography.hazmat.primitives.asymmetric import ed25519
+                public_key = ed25519.Ed25519PublicKey.from_public_bytes(result[0])
+                print("Verifying signature ...")
+                print(payload[:payload_length - ED25591_SIGNATURE_SIZE])
+                public_key.verify(signature, payload[:payload_length - ED25591_SIGNATURE_SIZE])
+                print("Signature verified.")
+
+
             else:
                 data_inb = payload[file_name_length:payload_length]
                 # print(f"Payload: {data_inb}")
@@ -234,6 +249,22 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
 
 def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
+        public_key_query = SIGNATURE_ALGORITHM + "_public_key"
+        private_key_query = SIGNATURE_ALGORITHM + "_private_key"
+        # Query for getting own asymmetric keys
+        _, port = LISTENING_SOCKET_INFO
+        if port == SERVER_PORT:
+            database = os.getenv("SERVER_DATABASE")
+        elif port == WINDOWS_PORT:
+            database = os.getenv("WINDOWS_CLIENT_DATABASE")
+        elif port == LINUX_PORT:
+            database = os.getenv("LINUX_CLIENT_DATABASE")
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+        db_connection.close()
+
         if data_to_send in vars(constants).values(): # Check if the payload is a constant
             data_type = STATUS_CODE
         else:
@@ -243,16 +274,28 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         if not file_name or type(file_name) == str:
             file_name = BYTES_NONE
 
-        print(data_subtype)
+        payload = file_name + data_to_send
 
         update_file_hash = BYTES_NONE # Initialise variable
-        # Hash the update file if security is on (used for testing purposes)
+        # Security relating to update files, not request communications
         if data_subtype == UPDATE_FILE and SECURITY == 1:
             update_file_hash = str.encode(hashlib.sha256(data_to_send).hexdigest())
             print(f"Update file hash: {update_file_hash}")
             # data_to_send = data_to_send + b'malicious_code' # Makes the authentication fail for the unencrypted payload as the hashes will not match up
-
-        payload = file_name + data_to_send + update_file_hash
+            db_connection = sqlite3.connect(database)
+            cursor = db_connection.cursor()
+            result = (cursor.execute(f"SELECT {public_key_query}, {private_key_query} FROM cryptographic_data WHERE cryptographic_entry_id = 1")).fetchone()
+            print(result)
+            db_connection.close()
+            from cryptography.hazmat.primitives.asymmetric import ed25519
+            public_key_query, private_key_query = ed25519.Ed25519PublicKey.from_public_bytes(result[0]), ed25519.Ed25519PrivateKey.from_private_bytes(result[1])
+            print(f"Public key: {public_key_query}")
+            print(f"Private key: {private_key_query}")
+            payload = payload + update_file_hash
+            print(payload)
+            signature = private_key_query.sign(payload)
+            # print(signature)
+            payload = payload + signature
 
         print(f'Payload to send: {payload}')
         
@@ -271,20 +314,6 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         # print(f"Payload: {encrypted_payload}")
         # print(f"Nonce: {nonce}")
         # print(f"Tag: {tag}")
-
-        # Retrieve identifier
-        _, port = LISTENING_SOCKET_INFO
-        if port == SERVER_PORT:
-            database = os.getenv("SERVER_DATABASE")
-        elif port == WINDOWS_PORT:
-            database = os.getenv("WINDOWS_CLIENT_DATABASE")
-        elif port == LINUX_PORT:
-            database = os.getenv("LINUX_CLIENT_DATABASE")
-
-        db_connection = sqlite3.connect(database)
-        cursor = db_connection.cursor()
-        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
-        db_connection.close()
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
 
