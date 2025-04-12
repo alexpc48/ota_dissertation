@@ -79,8 +79,8 @@ if __name__=='__main__':
                     vehicle_ip TEXT,
                     vehicle_port INTEGER,
                     last_poll_time TIMESTAMP,
-                    aes_128_key BLOB,
-                    aes_256_key BLOB
+                    aes_128 BLOB,
+                    aes_256 BLOB
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS updates (
@@ -93,13 +93,13 @@ if __name__=='__main__':
    
     # Linux laptop
     # UUID = c42157c2-9526-b07c-7e43-b4a9fc957957
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128_key, aes_256_key)
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256)
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
                     ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client))
 
     # Windows laptop
     # UUID = CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128_key, aes_256_key)
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256)
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
                     ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client))
     
@@ -171,8 +171,8 @@ if __name__=='__main__':
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
                     cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    aes_128_key BLOB,
-                    aes_256_key BLOB
+                    aes_128 BLOB,
+                    aes_256 BLOB
                     )''')
     
     print("Adding data to the Windows client database ...")
@@ -185,7 +185,7 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.2.w', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128_key, aes_256_key)
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256)
                     VALUES (?, ?)''',
                     (aes_128_windows_client, aes_256_windows_client))
     
@@ -231,8 +231,8 @@ if __name__=='__main__':
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
                 cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                aes_128_key BLOB,
-                aes_256_key BLOB
+                aes_128 BLOB,
+                aes_256 BLOB
                 )''')
 
     print("Adding data to the Linux database ...")
@@ -245,7 +245,7 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.3.png', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128_key, aes_256_key)
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256)
                     VALUES (?, ?)''',
                     (aes_128_linux_client, aes_256_linux_client))
     

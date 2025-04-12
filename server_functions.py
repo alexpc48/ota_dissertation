@@ -1,15 +1,11 @@
 # HEADER FILE
 
 # Libraries
-import random
 import socket
 import typing
 import selectors
 import threading
 import os
-import types
-import errno
-import time
 import sqlite3
 import dotenv
 from constants import *
@@ -87,9 +83,9 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
 
         key = selector.get_key(connection_socket)
 
-        print('Preparing data to send ...')
+        print("Preparing data to send ...")
         key.data.outb = UPDATE_VERSION_REQUEST
-        print('Data ready to send.')
+        print("Data ready to send.")
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
@@ -117,7 +113,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
 
         print(f"Client update version: {update_version}")
         
-        # response_data.clear()  # Clear the response data for the next request
+        response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Retrieved client update version successfully.")
         return SUCCESS
@@ -147,9 +143,9 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
 
         key = selector.get_key(connection_socket)
 
-        print('Preparing data to send ...')
+        print("Preparing data to send ...")
         key.data.outb = UPDATE_READINESS_STATUS_REQUEST
-        print('Data ready to send.')
+        print("Data ready to send.")
 
         response_event.clear()
         response_event.wait(timeout=None)
@@ -168,12 +164,11 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
             print("Client is not ready to receive the update.")
             return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
         
-        # response_data.clear()  # Clear the response data for the next request
+        response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Retrieved client update readiness successfully.")
         return update_readiness, SUCCESS
         
-
     except Exception as e:
         print(f"An error occurred: {e}")
         return BOOL_NONE, ERROR
@@ -199,12 +194,11 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
 
         key = selector.get_key(connection_socket)
 
-        print('Preparing data to send ...')
+        print("Preparing data to send ...")
         key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
-        print(key.data.file_name)
         key.data.data_subtype = UPDATE_FILE
         key.data.outb = file_data
-        print('Data ready to send.')
+        print("Data ready to send.")
 
         response_event.clear()
         response_event.wait(timeout=None)
@@ -216,7 +210,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("Client is not ready to receive the update.")
             return CLIENT_NOT_UPDATE_READY_ERROR
         
-        # response_data.clear()  # Clear the response data for the next request
+        response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Pushed update successfully.")
         return SUCCESS
@@ -225,14 +219,12 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         print(f"An error occurred: {e}")
         return ERROR
 
-# TODO: Needs to check latest update in database and compare with what is said the client has
+# TODO: Get the clients update version and compare it with the newest one in the database
 def check_for_updates() -> typing.Tuple[bool, bytes, int]:
     update_available = True
     update_available_bytes = UPDATE_AVALIABLE
     return update_available, update_available_bytes, SUCCESS
 
-# TODO: https://chatgpt.com/share/67e81027-c6bc-800e-adbc-2086ecf38797
-# TODO: Use dedicated header file with more information
 def get_update_file() -> typing.Tuple[bytes, bytes, int]:
     try:
         dotenv.load_dotenv()
@@ -244,7 +236,6 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
         # Gets the latest update file from the database
         update_version, update_file = (cursor.execute("SELECT update_version, update_file FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()
         db_connection.close()
-        print(update_version)
         return str.encode(update_version), update_file, SUCCESS
     
     except Exception as e:

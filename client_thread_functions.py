@@ -154,7 +154,22 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Read events
                 if mask & selectors.EVENT_READ:
                     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket)
+                    database, ret_val = get_client_database()
+                    if ret_val == SUCCESS:
+                        print("Database name retrieved successfully.")
+                    else:
+                        print("An error occurred while retrieving the database name.")
+                        print("Please check the logs for more details.")
+                        return ERROR
+                    
+                    # Retrieve AES key based on the encryption algorithm
+                    db_connection = sqlite3.connect(database)
+                    cursor = db_connection.cursor()
+                    encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
+                    print(encryption_key)
+                    db_connection.close()
+                    
+                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket, encryption_key)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
@@ -226,13 +241,27 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = str.encode(identifier) + DATA_RECEIVED_ACK
 
                     key.data.inb = BYTES_NONE  # Clear the input buffer
-                    # key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
                         print("Creating payload ...")
-                        payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype)
+                        
+                        database, ret_val = get_client_database()
+                        if ret_val == SUCCESS:
+                            print("Database name retrieved successfully.")
+                        else:
+                            print("An error occurred while retrieving the database name.")
+                            print("Please check the logs for more details.")
+                            return ERROR
+                        
+                        # Retrieve AES key based on the encryption algorithm
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
+                        db_connection.close()
+
+                        payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
                         if ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR

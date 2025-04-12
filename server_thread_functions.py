@@ -3,9 +3,6 @@
 # Libraries
 import selectors
 import os
-import re
-import struct
-import constants
 from constants import *
 from server_functions import *
 
@@ -115,7 +112,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Read events
                 if mask & selectors.EVENT_READ:
                     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket)
+                    
+                    key.data.file_name, key.data.inb, data_type, data_subtype, ret_val = receive_payload(connection_socket, encryption_key)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)
@@ -127,7 +125,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if ret_val == SUCCESS:
                         key.data.identifier = key.data.inb[:IDENTIFIER_LENGTH] # Identifier is sent as part of payload from the client
                         key.data.inb = key.data.inb[IDENTIFIER_LENGTH:] # Remove identifier from the payload
-                        print(key.data.inb)
+                        print(key.data.identifier.decode())
 
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
@@ -153,7 +151,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_NOT_READY:
                             print("The client is not ready to install the update.")
                             response_data["update_readiness"] = False
-                            print("Current response_data:", response_data)
                         
                         elif data_type == DATA:
                             if data_subtype == UPDATE_VERSION:
@@ -172,13 +169,21 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = DATA_RECEIVED_ACK
 
                     key.data.inb = BYTES_NONE  # Clear the input buffer
-                    # key.data.file_name = BYTES_NONE
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
                         print("Creating payload ...")
-                        payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype)
+
+                        dotenv.load_dotenv()
+                        database = os.getenv("SERVER_DATABASE") # Not using a default database
+
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
+                        db_connection.close()
+
+                        payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
                         if ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
@@ -189,7 +194,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             payload = payload[sent:]
                         key.data.outb = BYTES_NONE
                         print("Data sent.")
-                        print(f"RSP data: {response_data.get("update_readiness")}")
 
     except Exception as e:
         print(f"An error occurred: {e}")

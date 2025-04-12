@@ -125,7 +125,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
 
-def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, bytes, int, int, int]:
+def receive_payload(connection_socket: socket.socket, encryption_key) -> typing.Tuple[bytes, bytes, int, int, int]:
     try:
         file_name = BYTES_NONE # Initialise variable
 
@@ -172,7 +172,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             # print(f"Nonce: {nonce}")
             # print(f"Tag: {tag}")
             
-            payload, ret_val = payload_decryption(payload, nonce, tag, ENCRYPTION_ALGORITHM) # Decrypt the payload
+            payload, ret_val = payload_decryption(payload, nonce, tag, encryption_key) # Decrypt the payload
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_DECRYPTION_ERROR
@@ -188,7 +188,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
         print(f"An error occurred: {e}")
         return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, PAYLOAD_RECEIVE_ERROR
 
-def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> typing.Tuple[bytes, int]:
+def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
         if data_to_send in vars(constants).values(): # Check if the payload is a constant
             data_type = STATUS_CODE
@@ -198,8 +198,6 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> t
         # Keeps the same header format even if client is not sending a file
         if not file_name or type(file_name) == str:
             file_name = BYTES_NONE
-        # if not data_subtype:
-        #     data_subtype = INT_NONE
 
         payload = file_name + data_to_send
         payload_length = len(payload)
@@ -207,7 +205,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> t
         # Only packs integers for the header
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
         
-        nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, ENCRYPTION_ALGORITHM)
+        nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
@@ -215,11 +213,6 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype:int) -> t
         # print(f"Payload: {encrypted_payload}")
         # print(f"Nonce: {nonce}")
         # print(f"Tag: {tag}")
-
-        # DEBUG ONLY
-        if ENCRYPTION_ALGORITHM == 'NONE':
-            nonce = random.randbytes(NONCE_LENGTH)
-            tag = random.randbytes(TAG_LENGTH)
 
         data_to_send = header + nonce + tag + encrypted_payload
 

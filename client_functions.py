@@ -1,15 +1,10 @@
 # HEADER FILE
 
 # Libraries
-import random
-import socket
 import typing
 import selectors
 import threading
 import os
-import types
-import errno
-import time
 import sqlite3
 import dotenv
 import platform
@@ -152,7 +147,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         
         key = selector.get_key(connection_socket)
 
-        print('Preparing data to send ...')
+        print("Preparing data to send ...")
 
         database, ret_val = get_client_database()
         if ret_val == SUCCESS:
@@ -168,7 +163,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         db_connection.close()
 
         key.data.outb = str.encode(identifier) + UPDATE_CHECK_REQUEST
-        print('Data ready to send.')
+        print("Data ready to send.")
 
         response_event.clear()
         response_event.wait(timeout=None)
@@ -181,7 +176,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
             print("There is no update ready.")
             return None, NO_UPDATE_ERROR
 
-        # response_data.clear()  # Clear the response data for the next request
+        response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Update check request processed successfully.")
         return update_avaliable, SUCCESS
@@ -259,7 +254,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
 
         key = selector.get_key(connection_socket)
         
-        print('Preparing data to send ...')
+        print("Preparing data to send ...")
 
         database, ret_val = get_client_database()
         if ret_val == SUCCESS:
@@ -275,7 +270,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         db_connection.close()
 
         key.data.outb = str.encode(identifier) + UPDATE_DOWNLOAD_REQUEST
-        print('Data ready to send.')
+        print("Data ready to send.")
 
         response_event.clear()
         response_event.wait(timeout=None)
@@ -283,7 +278,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
 
-        # response_data.clear()  # Clear the response data for the next request
+        response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Update downloaded successfully.")
         return SUCCESS
@@ -300,12 +295,11 @@ def get_update_version() -> typing.Tuple[str, bytes, int]:
         else:
             print("An error occurred while retrieving the database name.")
             print("Please check the logs for more details.")
-            return '', ERROR
+            return STR_NONE, ERROR
         
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         update_version = (cursor.execute("SELECT update_version FROM update_information WHERE update_entry_id = 1")).fetchone()[0]
-        print(update_version)
         db_connection.close()
         update_version_bytes = str.encode(update_version)
         return update_version, update_version_bytes, SUCCESS
@@ -385,59 +379,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
         cursor.execute("UPDATE update_information SET update_version = ? WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed
         db_connection.commit()
         db_connection.close()
-        print("Update version updated in the database.")
-        
-
-        # database, ret_val = get_client_database()
-        # if ret_val == SUCCESS:
-        #     print("Database name retrieved successfully.")
-        # else:
-        #     print("An error occurred while retrieving the database name.")
-        #     print("Please check the logs for more details.")
-        #     return ERROR
-        
-        # # Get the server IP and port from the database
-        # db_connection = sqlite3.connect(database)
-        # cursor = db_connection.cursor()
-
-        # # Check if there is already an update queued for download
-        # result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
-        # if result[0]:
-        #     print("An update is already queued for download.")
-        #     db_connection.close()
-        #     return QUEUED_UPDATE_ERROR
-        
-        # result = (cursor.execute("SELECT server_ip, server_port FROM network_information WHERE network_id = 1")).fetchone()
-        # db_connection.close()
-        # server_host, server_port = result[0], result[1]
-
-        # selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
-        # if ret_val == SUCCESS:
-        #     print("Connection to server established.")
-        # elif ret_val == CONNECTION_INITIATE_ERROR:
-        #     print("Error: Connection initiation failed.")
-        #     return CONNECTION_INITIATE_ERROR
-        # else:
-        #     print("An error occurred while establishing the connection.")
-        #     return ERROR        
-
-        # key = selector.get_key(connection_socket)
-        
-        # print('Preparing data to send ...')
-        # key.data.data_subtype = UPDATE_VERSION_PUSH
-        # key.data.outb = str.encode(update_file_name)
-        # print('Data ready to send.')
-
-        # response_event.clear()
-        # response_event.wait(timeout=None)
-        # if not response_event.is_set():
-        #     print("Timeout waiting for server response.")
-        #     return CONNECTION_SERVICE_ERROR
-
-        # response_data.clear()  # Clear the response data for the next request
-        # response_event.clear() # Clear the event for the next request
-        # print("Sending new update version to the server")
-    
+        print("Update version updated in the database.")    
         print("Update installed successfully.")
         return SUCCESS
             
