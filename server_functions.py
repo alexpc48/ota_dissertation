@@ -117,7 +117,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
 
         print(f"Client update version: {update_version}")
         
-        response_data.clear()  # Clear the response data for the next request
+        # response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Retrieved client update version successfully.")
         return SUCCESS
@@ -157,9 +157,9 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
-        update_readiness = response_data.get("update_readiness")
+        print(f"RSP data: {response_data.get("update_readiness")}")
+        update_readiness = response_data.get('update_readiness')
         print(update_readiness)
-        print('hi')
 
         if update_readiness == True:
             print("Client is ready to receive the update.")
@@ -168,7 +168,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
             print("Client is not ready to receive the update.")
             return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
         
-        response_data.clear()  # Clear the response data for the next request
+        # response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Retrieved client update readiness successfully.")
         return update_readiness, SUCCESS
@@ -216,7 +216,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("Client is not ready to receive the update.")
             return CLIENT_NOT_UPDATE_READY_ERROR
         
-        response_data.clear()  # Clear the response data for the next request
+        # response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Pushed update successfully.")
         return SUCCESS

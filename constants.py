@@ -62,3 +62,4 @@ UPDATE_VERSION_PUSH = 3 # A client is pushing their version number to the server
 TAG_LENGTH = 16
 NONCE_LENGTH = 16
 ENCRYPTION_ALGORITHM = 'NONE'
+IDENTIFIER_LENGTH = 36

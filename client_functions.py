@@ -153,7 +153,21 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         key = selector.get_key(connection_socket)
 
         print('Preparing data to send ...')
-        key.data.outb = UPDATE_CHECK_REQUEST
+
+        database, ret_val = get_client_database()
+        if ret_val == SUCCESS:
+            print("Database name retrieved successfully.")
+        else:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return BOOL_NONE, BYTES_NONE, ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+        db_connection.close()
+
+        key.data.outb = str.encode(identifier) + UPDATE_CHECK_REQUEST
         print('Data ready to send.')
 
         response_event.clear()
@@ -167,7 +181,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
             print("There is no update ready.")
             return None, NO_UPDATE_ERROR
 
-        response_data.clear()  # Clear the response data for the next request
+        # response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Update check request processed successfully.")
         return update_avaliable, SUCCESS
@@ -246,7 +260,21 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         key = selector.get_key(connection_socket)
         
         print('Preparing data to send ...')
-        key.data.outb = UPDATE_DOWNLOAD_REQUEST
+
+        database, ret_val = get_client_database()
+        if ret_val == SUCCESS:
+            print("Database name retrieved successfully.")
+        else:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return BOOL_NONE, BYTES_NONE, ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+        db_connection.close()
+
+        key.data.outb = str.encode(identifier) + UPDATE_DOWNLOAD_REQUEST
         print('Data ready to send.')
 
         response_event.clear()
@@ -255,7 +283,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             print("Timeout waiting for server response.")
             return CONNECTION_SERVICE_ERROR
 
-        response_data.clear()  # Clear the response data for the next request
+        # response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
         print("Update downloaded successfully.")
         return SUCCESS

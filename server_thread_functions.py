@@ -125,6 +125,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         return PAYLOAD_RECEIVE_ERROR
                     
                     if ret_val == SUCCESS:
+                        key.data.identifier = key.data.inb[:IDENTIFIER_LENGTH] # Identifier is sent as part of payload from the client
+                        key.data.inb = key.data.inb[IDENTIFIER_LENGTH:] # Remove identifier from the payload
+
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
                             print("Checking for new updates ...")
@@ -185,6 +188,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             payload = payload[sent:]
                         key.data.outb = BYTES_NONE
                         print("Data sent.")
+                        print(f"RSP data: {response_data.get("update_readiness")}")
 
     except Exception as e:
         print(f"An error occurred: {e}")
