@@ -10,7 +10,7 @@ from Crypto.Cipher import AES
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
-        if ENCRYPTION_ALGORITHM == 'none':
+        if ENCRYPTION_ALGORITHM == 'none' and SECURITY == 0:
             nonce = random.randbytes(NONCE_LENGTH)
             tag = random.randbytes(TAG_LENGTH)
             return nonce, payload, tag, SUCCESS
@@ -27,7 +27,7 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
 # Decryption
 def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
-        if ENCRYPTION_ALGORITHM == 'none':
+        if ENCRYPTION_ALGORITHM == 'none' and SECURITY == 0:
             return payload, SUCCESS
         elif ENCRYPTION_ALGORITHM == 'aes_128' or ENCRYPTION_ALGORITHM == 'aes_256':
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)

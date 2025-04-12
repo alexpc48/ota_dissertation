@@ -9,6 +9,7 @@ import types
 import typing
 import errno
 import random
+import hashlib
 import sqlite3
 import os
 import time
@@ -206,9 +207,24 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
             
             file_name = payload[:file_name_length]
-            data_inb = payload[file_name_length:]
             print(f"File name: {file_name}")
-            print(f"Payload: {data_inb}")
+
+            print(data_subtype)
+
+            if data_subtype == UPDATE_FILE and SECURITY == 1:
+                print('hello')
+                data_inb = payload[file_name_length:payload_length - HASH_SIZE]
+                # print(f"Payload: {data_inb}")
+                update_file_hash = (payload[payload_length - HASH_SIZE:payload_length]).decode()
+                print(f"Received hash: {update_file_hash}")
+                generated_hash = hashlib.sha256(data_inb).hexdigest()
+                print(f"Generated hash: {generated_hash}")
+                if update_file_hash != generated_hash:
+                    print("Hash mismatch. Payload not valid.")
+                    return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INVALID_PAYLOAD_ERROR
+            else:
+                data_inb = payload[file_name_length:payload_length]
+                # print(f"Payload: {data_inb}")
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
@@ -227,18 +243,30 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         if not file_name or type(file_name) == str:
             file_name = BYTES_NONE
 
-        payload = file_name + data_to_send
-        payload_length = len(payload)
+        print(data_subtype)
+
+        update_file_hash = BYTES_NONE # Initialise variable
+        # Hash the update file if security is on (used for testing purposes)
+        if data_subtype == UPDATE_FILE and SECURITY == 1:
+            update_file_hash = str.encode(hashlib.sha256(data_to_send).hexdigest())
+            print(f"Update file hash: {update_file_hash}")
+            # data_to_send = data_to_send + b'malicious_code' # Makes the authentication fail for the unencrypted payload as the hashes will not match up
+
+        payload = file_name + data_to_send + update_file_hash
 
         print(f'Payload to send: {payload}')
-
-        # Only packs integers for the header
-        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
         
         nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
+        
+        # encrypted_payload += b'malicious_code' # Makes the authentication fail for the encrypted payload as tag was generated on the original encrypted payload
+
+        payload_length = len(encrypted_payload)
+
+        # Only packs integers for the header
+        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
 
         # print(f"Payload: {encrypted_payload}")
         # print(f"Nonce: {nonce}")

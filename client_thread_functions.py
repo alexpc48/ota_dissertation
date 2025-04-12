@@ -162,9 +162,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if ret_val == PAYLOAD_RECEIVE_ERROR:
                         print("Error: Failed to receive payload.")
                         return PAYLOAD_RECEIVE_ERROR
+                    if ret_val == INVALID_PAYLOAD_ERROR:
+                        print("Error: Invalid payload received.")
+                        return INVALID_PAYLOAD_ERROR
 
                     if ret_val == SUCCESS:
-                        print(key.data.inb)
 
                         if key.data.inb == UPDATE_AVALIABLE:
                             print("There is an update available.")

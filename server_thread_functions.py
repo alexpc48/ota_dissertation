@@ -121,9 +121,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if ret_val == PAYLOAD_RECEIVE_ERROR:
                         print("Error: Failed to receive payload.")
                         return PAYLOAD_RECEIVE_ERROR
+                    if ret_val == INVALID_PAYLOAD_ERROR:
+                        print("Error: Invalid payload received.")
+                        return INVALID_PAYLOAD_ERROR
                     
                     if ret_val == SUCCESS:
-                        print(key.data.inb)
 
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
@@ -186,7 +188,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
                         
-                        print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        # print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
                         while payload:
                             sent = connection_socket.send(payload)
                             payload = payload[sent:]
