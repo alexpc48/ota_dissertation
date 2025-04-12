@@ -127,6 +127,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if ret_val == SUCCESS:
                         key.data.identifier = key.data.inb[:IDENTIFIER_LENGTH] # Identifier is sent as part of payload from the client
                         key.data.inb = key.data.inb[IDENTIFIER_LENGTH:] # Remove identifier from the payload
+                        print(key.data.inb)
 
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
@@ -142,7 +143,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
                             print("Update download request received.")
                             key.data.file_name, file_data, _ = get_update_file()
-                            print(key.data.file_name)
                             key.data.outb = file_data
                             key.data.data_subtype = UPDATE_FILE
 
@@ -153,6 +153,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif key.data.inb == UPDATE_NOT_READY:
                             print("The client is not ready to install the update.")
                             response_data["update_readiness"] = False
+                            print("Current response_data:", response_data)
                         
                         elif data_type == DATA:
                             if data_subtype == UPDATE_VERSION:

@@ -164,6 +164,20 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         return PAYLOAD_RECEIVE_ERROR
 
                     if ret_val == SUCCESS:
+                        # Retrieve identifier
+                        database, ret_val = get_client_database()
+                        if ret_val == SUCCESS:
+                            print("Database name retrieved successfully.")
+                        else:
+                            print("An error occurred while retrieving the database name.")
+                            print("Please check the logs for more details.")
+                            return BOOL_NONE, BYTES_NONE, ERROR
+                        
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+                        db_connection.close()
+
                         if key.data.inb == UPDATE_AVALIABLE:
                             print("There is an update available.")
                             response_data["update_available"] = True
@@ -177,15 +191,15 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             update_readiness, _, _ = check_update_readiness_status()
                             if update_readiness == True:
                                 print("Client is ready to receive the update.")
-                                key.data.outb = UPDATE_READY
+                                key.data.outb = str.encode(identifier) + UPDATE_READY
                             elif update_readiness == False:
                                 print("Client is not ready to receive the update.")
-                                key.data.outb = UPDATE_NOT_READY
+                                key.data.outb = str.encode(identifier) + UPDATE_NOT_READY
 
                         elif key.data.inb == UPDATE_VERSION_REQUEST:
                             print("Update version request received.")
                             _, update_version_bytes, _ = get_update_version()
-                            key.data.outb = update_version_bytes
+                            key.data.outb = str.encode(identifier) + update_version_bytes
                             key.data.data_subtype = UPDATE_VERSION
 
                         elif data_type == DATA:
@@ -209,7 +223,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             response_event.set() # Set completion flag for completed connection
                             
                         elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
-                            key.data.outb = DATA_RECEIVED_ACK
+                            key.data.outb = str.encode(identifier) + DATA_RECEIVED_ACK
 
                     key.data.inb = BYTES_NONE  # Clear the input buffer
                     # key.data.file_name = BYTES_NONE
