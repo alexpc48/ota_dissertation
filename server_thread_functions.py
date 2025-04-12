@@ -174,7 +174,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 if mask & selectors.EVENT_WRITE:
                     if key.data.outb:
                         print("Creating payload ...")
-                        print(key.data.file_name)
                         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype)
                         if ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")

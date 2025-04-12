@@ -38,6 +38,14 @@ if __name__=='__main__':
         file4 = 'updates\\popeye.png'
         file5 = 'updates\\bugs_bunny.jpg'
         file6 = 'updates\\daffy_duck.png'
+        with open("helpers\\aes_128_linux_client.key", "rb") as f:
+            aes_128_linux_client = f.read()
+        with open("helpers\\aes_256_linux_client.key", "rb") as f:
+            aes_256_linux_client = f.read()
+        with open("helpers\\aes_128_windows_client.key", "rb") as f:
+            aes_128_windows_client = f.read()
+        with open("helpers\\aes_256_windows_client.key", "rb") as f:
+            aes_256_windows_client = f.read()
     elif os_type == "Linux":
         file1 = 'updates/snoopy.png'
         file2 = 'updates/dban.iso'
@@ -45,6 +53,14 @@ if __name__=='__main__':
         file4 = 'updates/popeye.png'
         file5 = 'updates/bugs_bunny.jpg'
         file6 = 'updates/daffy_duck.png'
+        with open("helpers/aes_128_linux_client.key", "rb") as f:
+            aes_128_linux_client = f.read()
+        with open("helpers/aes_256_linux_client.key", "rb") as f:
+            aes_256_linux_client = f.read()
+        with open("helpers/aes_128_windows_client.key", "rb") as f:
+            aes_128_windows_client = f.read()
+        with open("helpers/aes_256_windows_client.key", "rb") as f:
+            aes_256_windows_client = f.read()
 
     print("Setting up server database ...")
     db_connection = sqlite3.connect("server_ota_updates.db")
@@ -62,7 +78,9 @@ if __name__=='__main__':
                     update_id INTEGER REFERENCES updates(update_id),
                     vehicle_ip TEXT,
                     vehicle_port INTEGER,
-                    last_poll_time TIMESTAMP
+                    last_poll_time TIMESTAMP,
+                    aes_128_key BLOB,
+                    aes_256_key BLOB
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS updates (
@@ -75,15 +93,15 @@ if __name__=='__main__':
    
     # Linux laptop
     # UUID = c42157c2-9526-b07c-7e43-b4a9fc957957
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
-                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128_key, aes_256_key)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
+                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client))
 
     # Windows laptop
     # UUID = CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
-                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128_key, aes_256_key)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)''',
+                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client))
     
     cursor.execute('''INSERT INTO network_information (local_ip, local_port)
                     VALUES (?, ?)''',
@@ -135,7 +153,8 @@ if __name__=='__main__':
                     server_ip TEXT,
                     server_port INTEGER,
                     local_ip TEXT,
-                    local_port INTEGER
+                    local_port INTEGER,
+                    identifier TEXT
                     )''')
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
@@ -149,16 +168,26 @@ if __name__=='__main__':
                     update_version TEXT,
                     update_file BLOB
                     )''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
+                    cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    aes_128_key BLOB,
+                    aes_256_key BLOB
+                    )''')
     
     print("Adding data to the Windows client database ...")
-    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port)
-                    VALUES (?, ?, ?, ?)''',
-                    (server_ip, server_port, windows_ip, windows_port))
+    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port, identifier)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    (server_ip, server_port, windows_ip, windows_port, 'CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A'))
     
     file_data, _ = get_update_file(file3)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
                     VALUES (?, ?)''',
                     ('1.0.2.w', False))
+    
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128_key, aes_256_key)
+                    VALUES (?, ?)''',
+                    (aes_128_windows_client, aes_256_windows_client))
     
     db_connection.commit()
     db_connection.close()
@@ -184,7 +213,8 @@ if __name__=='__main__':
                     server_ip TEXT,
                     server_port INTEGER,
                     local_ip TEXT,
-                    local_port INTEGER
+                    local_port INTEGER,
+                    identifier TEXT
                     )''')
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
@@ -198,16 +228,26 @@ if __name__=='__main__':
                     update_version TEXT,
                     update_file BLOB
                     )''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
+                cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                aes_128_key BLOB,
+                aes_256_key BLOB
+                )''')
 
     print("Adding data to the Linux database ...")
-    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port)
-                    VALUES (?, ?, ?, ?)''',
-                    (server_ip, server_port, linux_ip, linux_port))
+    cursor.execute('''INSERT INTO network_information (server_ip, server_port, local_ip, local_port, identifier)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    (server_ip, server_port, linux_ip, linux_port, 'C42157C2-9526-B07C-7E43-B4A9FC957957'))
     
     file_data, _ = get_update_file(file4)
     cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
                     VALUES (?, ?)''',
                     ('1.0.3.png', False))
+    
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128_key, aes_256_key)
+                    VALUES (?, ?)''',
+                    (aes_128_linux_client, aes_256_linux_client))
     
     db_connection.commit()
     db_connection.close()
