@@ -196,9 +196,14 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         
         # Respsonse data is set during service of the connection
         update_avaliable = response_data.get("update_available")
-        if update_avaliable == False:
+        if update_avaliable == True:
+            print("An update is available.")
+        elif update_avaliable == False:
             print("There is no new update.")
             return BOOL_NONE, NO_UPDATE_ERROR
+        else:
+            print("Invalid response from server.")
+            return BOOL_NONE, ERROR
 
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request

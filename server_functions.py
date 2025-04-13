@@ -1,23 +1,20 @@
 # HEADER FILE
 
 # Libraries
-import socket
-import typing
-import selectors
-import threading
-import os
-import sqlite3
 import dotenv
+import threading
+
 from constants import *
 from functions import *
 
+# Display the options menu for the server
 def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
-    print("1. Push the latest update to the client")
+    print("1. Push the latest update to the client") # TODO: Check first if the client already has the update
     print("-------------------------------------------------------------------------------------------")
-    print("10. Get the client update readiness status")
+    print("10. Get the client update readiness status") # TODO: Remove maybe - not that relevant information
     print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
     print("12. Get the client update version")
     print("-------------------------------------------------------------------------------------------")
@@ -31,33 +28,34 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
+# Get a list of the clients in the database and their network information
 def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
     try:
         dotenv.load_dotenv()
-        database = os.getenv("SERVER_DATABASE") # Not using a default database
+        database = os.getenv("SERVER_DATABASE")
 
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
-        query_result = (cursor.execute("SELECT vehicles_entry_id, vehicle_id, vehicle_ip, vehicle_port FROM vehicles ORDER BY vehicles_entry_id")).fetchall()
+        result = (cursor.execute("SELECT vehicles_entry_id, vehicle_id, vehicle_ip, vehicle_port FROM vehicles ORDER BY vehicles_entry_id")).fetchall()
         db_connection.close()
 
         print("Vehicle entries in the database.")
-        for result in query_result:
+        print("-----------------------------------------")
+        for result in result:
             print("Vehicle Entry ID: ", result[0])
             print("Vehicle ID: ", result[1])
             print("Vehicle IP: ", result[2])
             print("Vehicle Port: ", result[3])
+            print("-----------------------------------------")
         
         vehicle_id_input = int(input("Enter the vehicle ID to connect with: "))
 
         # AI help for next() function
-        selected_vehicle = next((v for v in query_result if v[0] == vehicle_id_input), None)
+        selected_vehicle = next((v for v in result if v[0] == vehicle_id_input), None)
 
         identifier = selected_vehicle[1]
         client_host = selected_vehicle[2]
         client_port = selected_vehicle[3]
-
-        print(identifier)
 
         return vehicle_id_input, identifier, client_host, client_port, SUCCESS
 
@@ -65,149 +63,133 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
         print(f"An error occurred: {e}")
         return INT_NONE, STR_NONE, INT_NONE, ERROR
 
-def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+# Requests the clients update version from the client
+def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[str, str, int]:
     try:
         vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
-        if ret_val == SUCCESS:
-            print("Retreived client information.")
-        else:
-            print("An error occurred.")
-            return ERROR
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
+            return STR_NONE, STR_NONE, ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
-        if ret_val == SUCCESS:
-            print("Connection to client established.")
-        elif ret_val == CONNECTION_INITIATE_ERROR:
+        if ret_val == CONNECTION_INITIATE_ERROR:
             print("Error: Connection initiation failed.")
-            return CONNECTION_INITIATE_ERROR
-        else:
-            print("An error occurred.")
-            return ERROR
+            return identifier, STR_NONE, CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
 
         key.data.identifier = identifier
 
-        print("Preparing data to send ...")
         key.data.outb = UPDATE_VERSION_REQUEST
-        print("Data ready to send.")
+
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
             print("Timeout waiting for client response.")
-            return CONNECTION_SERVICE_ERROR
+            return STR_NONE, STR_NONE, CONNECTION_SERVICE_ERROR
         
-        update_version = response_data.get("update_version")
+        client_update_version = response_data.get("update_version")
+        print(f"Client update version: {client_update_version}")
 
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
-
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         # Gets the latest update file from the database
-        update_version_stored = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicles_entry_id = ?;", (vehicle_entry_id,))).fetchone()
-        cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (vehicle_entry_id,))
+        latest_update_version = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicles_entry_id = ?;", (vehicle_entry_id,))).fetchone()[0]
+        # Updates poll time and version number
+        client_update_id = cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (client_update_version,)).fetchone()
+        cursor.execute("UPDATE vehicles SET update_id = ?, last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (client_update_id, vehicle_entry_id)) # Uses the current timestamp to determine when version number was retrieved
         db_connection.commit()
         db_connection.close()
 
-        if update_version_stored[0] == update_version:
+        if latest_update_version == client_update_version:
             print("Client is up to date.")
         else:
             print("Client is not up to date.")
             print("Please update the client.")
-
-        print(f"Client update version: {update_version}")
         
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
-        print("Retrieved client update version successfully.")
-        return SUCCESS
+
+        return STR_NONE, client_update_version, SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
-        return ERROR
+        return STR_NONE, STR_NONE, ERROR
 
-def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
-    try:
-        _, identifier, client_host, client_port, ret_val = get_client_network_information()
-        if ret_val == SUCCESS:
-            print("Retreived client information.")
-        else:
-            print("An error occurred.")
-            return ERROR
+# Gets the update readiness status from the client
+# def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
+#     try:
+#         vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
+#         if ret_val == ERROR:
+#             print("An error occurred while retrieving the client network information.")
+#             return BOOL_NONE, ERROR
         
-        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
-        if ret_val == SUCCESS:
-            print("Connection to client established.")
-        elif ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
-            return CONNECTION_INITIATE_ERROR
-        else:
-            print("An error occurred.")
-            return ERROR
+#         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+#         if ret_val == CONNECTION_INITIATE_ERROR:
+#             print("Error: Connection initiation failed.")
+#             return BOOL_NONE, CONNECTION_INITIATE_ERROR
 
-        key = selector.get_key(connection_socket)
+#         key = selector.get_key(connection_socket)
 
-        key.data.identifier = identifier
+#         key.data.identifier = identifier
 
-        print("Preparing data to send ...")
-        key.data.outb = UPDATE_READINESS_STATUS_REQUEST
-        print("Data ready to send.")
+#         key.data.outb = UPDATE_READINESS_STATUS_REQUEST
 
-        response_event.clear()
-        response_event.wait(timeout=None)
-        if not response_event.is_set():
-            print("Timeout waiting for client response.")
-            return CONNECTION_SERVICE_ERROR
+#         response_event.clear()
+#         response_event.wait(timeout=None)
+#         if not response_event.is_set():
+#             print("Timeout waiting for client response.")
+#             return BOOL_NONE, CONNECTION_SERVICE_ERROR
         
-        print(f"RSP data: {response_data.get("update_readiness")}")
-        update_readiness = response_data.get('update_readiness')
-        print(update_readiness)
+#         update_readiness = response_data.get('update_readiness')
 
-        if update_readiness == True:
-            print("Client is ready to receive the update.")
+#         dotenv.load_dotenv()
+#         database = os.getenv("SERVER_DATABASE")
+#         db_connection = sqlite3.connect(database)
+#         cursor = db_connection.cursor()
+#         # Update poll time
+#         cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (vehicle_entry_id,)) # Uses the current timestamp to determine when version number was retrieved
+#         db_connection.commit()
+#         db_connection.close()
 
-        if update_readiness == False:
-            print("Client is not ready to receive the update.")
-            return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
+#         if update_readiness == True:
+#             print("Client is ready to install the update.")
+#         elif update_readiness == False:
+#             print("Client is not ready to install the update.")
+#             return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
         
-        response_data.clear()  # Clear the response data for the next request
-        response_event.clear() # Clear the event for the next request
-        print("Retrieved client update readiness successfully.")
-        return update_readiness, SUCCESS
+#         response_data.clear()  # Clear the response data for the next request
+#         response_event.clear() # Clear the event for the next request
+
+#         return update_readiness, SUCCESS
         
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return BOOL_NONE, ERROR
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         return BOOL_NONE, ERROR
     
+# Pushes an update to the client
+# Example when a new update comes out, the server will push the update to the client
 def push_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
-        if ret_val == SUCCESS:
-            print("Retreived client information.")
-        else:
-            print("An error occurred.")
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
             return ERROR
-
+        
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
-        if ret_val == SUCCESS:
-            print("Connection to client established.")
-        elif ret_val == CONNECTION_INITIATE_ERROR:
+        if ret_val == CONNECTION_INITIATE_ERROR:
             print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
-        else:
-            print("An error occurred.")
-            return ERROR
 
         key = selector.get_key(connection_socket)
 
         key.data.identifier = identifier
 
-        print("Preparing data to send ...")
         key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
         key.data.data_subtype = UPDATE_FILE
         key.data.outb = file_data
-        print("Data ready to send.")
 
         response_event.clear()
         response_event.wait(timeout=None)
@@ -215,31 +197,20 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
-        if response_data.get("update_readiness") == False:
-            print("Client is not ready to receive the update.")
-            return CLIENT_NOT_UPDATE_READY_ERROR
-        
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
-        print("Pushed update successfully.")
+
         return SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")
         return ERROR
 
-# TODO: Get the clients update version and compare it with the newest one in the database
-def check_for_updates() -> typing.Tuple[bool, bytes, int]:
-    update_available = True
-    update_available_bytes = UPDATE_AVALIABLE
-    return update_available, update_available_bytes, SUCCESS
-
+# Gets the latest update file from the database
 def get_update_file() -> typing.Tuple[bytes, bytes, int]:
     try:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
-
-        print("Preparing update file ...")
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         # Gets the latest update file from the database
@@ -250,40 +221,13 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return STR_NONE, BYTES_NONE, ERROR
-
-def store_update_version(update_version: str, selector: selectors.SelectSelector, connection_socket: socket.socket) -> int:
-    pass
-    # try:
-    #     key = selector.get_key(connection_socket)
-    #     ip, port = key.data.address[0], key.data.address[1]
-    #     print(f"Received update version from {ip}:{port} ...")
-    #     dotenv.load_dotenv()
-    #     database = os.getenv("SERVER_DATABASE")
-
-    #     db_connection = sqlite3.connect(database)
-    #     cursor = db_connection.cursor()
-    #     # Gets the latest update file from the database
-    #     latest_update_version = (cursor.execute("SELECT update_version FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()[0]
-    #     print(latest_update_version)
-    #     print(update_version)
-    #     if latest_update_version == update_version:
-    #         update_entry_id = (cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (update_version,))).fetchone()
-    #         if update_entry_id:
-    #             cursor.execute("UPDATE vehicles SET update_id = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_entry_id[0], ip, port))
-    #         else:
-    #             print("Error: Update version not found in the database.")
-    #             return ERROR
-    #         print("Client is on the latest update version.")
-    #     else:
-    #         cursor.execute("UPDATE vehicles SET update_version = ? WHERE vehicle_ip = ? AND vehicle_port = ?", (update_version, ip, port))
-    #         print("Client is not on the latest update version.")
-    #     cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_ip = ? AND vehicle_port = ?", (ip, port))
-        
-        
-    #     db_connection.commit()
-    #     db_connection.close()
-    #     return SUCCESS
-
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
-    #     return ERROR
+    
+# TODO: Should check if the latest update is installed or not on the client (compaing server local db)
+def check_for_updates() -> typing.Tuple[bool, bytes]:
+    if True:
+        update_available = True
+        update_available_bytes = UPDATE_AVALIABLE
+    else:
+        update_available = False
+        update_available_bytes = UPDATE_NOT_AVALIABLE
+    return update_available, update_available_bytes

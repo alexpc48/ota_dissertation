@@ -1,8 +1,6 @@
 # HEADER FILE
 
 # Libraries
-import selectors
-import os
 from constants import *
 from server_functions import *
 
@@ -17,37 +15,59 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     ret_val = push_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update pushed successfully.")
-                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
-                        print("Error: Client is not ready to receive the update.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
                         print("An error occurred.")
                         print("Please check the logs for more details.")
                 
-                case '10': # Check client for update readiness status
-                    print("Checking client for update readiness status ...")
-                    update_readiness, ret_val = get_client_update_readiness_status(selector, response_event, response_data)
-                    if ret_val == SUCCESS and update_readiness == True:
-                        print("Client currently is ready to install updates.")
-                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR and update_readiness == False:
-                        print("Error: Client is not ready to receive the update.")
-                    elif ret_val == CONNECTION_INITIATE_ERROR:
-                        print("Error: Connection initiation failed.")
-                    else:
-                        print("An error occurred.")
-                        print("Please check the logs for more details.")
+                # case '10': # Check client for update readiness status
+                #     print("Checking client for update readiness status ...")
+                #     update_readiness, ret_val = get_client_update_readiness_status(selector, response_event, response_data)
+                #     if ret_val == SUCCESS and update_readiness == True:
+                #         print("Client currently is ready to install updates.")
+                #     elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR and update_readiness == False:
+                #         print("Error: Client is not ready to install updates.")
+                #     elif ret_val == CONNECTION_INITIATE_ERROR:
+                #         print("Error: Connection initiation failed.")
+                #     else:
+                #         print("An error occurred while getting the clients update readiness status.")
+                #         print("Please check the logs for more details.")
+
+                case '11':
+                    continue
                 
                 case '12': # Get the clients current update version
                     print("Getting the clients current update version ...")
-                    ret_val = get_client_update_version(selector, response_event, response_data)
+                    identifier, client_update_version, ret_val = get_client_update_version(selector, response_event, response_data)
                     if ret_val == SUCCESS:
+                        print(f"Client update version: {client_update_version}")
                         print("Client update version retrieved successfully.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
+                        print("Client not online. Update version is out of date.")
+
+                        # Gets the last update version that was polled
+                        dotenv.load_dotenv()
+                        database = os.getenv("SERVER_DATABASE")
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        # TODO: Test query
+                        result = (cursor.execute("SELECT updates.update_version, vehicles.last_poll_time FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone
+                        client_update_version, last_poll_time = result[0], result[1]
+                        db_connection.close()
+                        # Displays the last known update version if poll fails
+                        print(f"Last polled update version for '{identifier}': {client_update_version}")
+                        print(f"Last poll time: {last_poll_time}")
                     else:
-                        print("An error occurred.")
+                        print("An error occurred while getting the clients update version.")
                         print("Please check the logs for more details.")
+
+                case '20':
+                    continue
+
+                case '30':
+                    continue
 
                 case '98': # Redisplay the options menu
                     continue
@@ -85,7 +105,7 @@ def listen(selector: selectors.SelectSelector) -> None:
                         elif ret_val == CONNECTION_ACCEPT_ERROR:
                             print("Error: Failed to accept new connection.")
                         else:
-                            print("An error occurred.")
+                            print("An error occurred while accepting a new connection.")
                             print("Please check the logs for more details.")
 
     except Exception as e:
@@ -93,16 +113,16 @@ def listen(selector: selectors.SelectSelector) -> None:
         # TODO: Implement proper graceful exit
         os._exit(LISTENING_ERROR)
 
+# Service current connecitons
 def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         while True:
             # Get list of events from the selector
             timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
+            events = selector.select(timeout=timeout_interval)
             for key, mask in events:
-                # AI assistance used for creating custom header for the packet
 
-                # Service active socket connections, not the listening socket
+                # Service active socket connections only, not the listening socket
                 if key.data == "listening_socket":
                     continue
 
@@ -130,17 +150,20 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
                             print("Checking for new updates ...")
-                            update_available, update_available_bytes, _ = check_for_updates()
+                            update_available, update_available_bytes = check_for_updates()
                             if update_available == True:
                                 print("New update available.")
-                                key.data.outb = update_available_bytes # Send back result from the update check request
+                                key.data.outb = update_available_bytes
                             elif update_available == False:
                                 print("No new updates available.")
                                 key.data.outb = update_available_bytes
 
                         elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
                             print("Update download request received.")
-                            key.data.file_name, file_data, _ = get_update_file()
+                            key.data.file_name, file_data, ret_val = get_update_file()
+                            if ret_val == ERROR:
+                                print("Error: Failed to get update file.")
+                                return ERROR
                             key.data.outb = file_data
                             key.data.data_subtype = UPDATE_FILE
 
@@ -153,10 +176,10 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             response_data["update_readiness"] = False
                         
                         elif data_type == DATA:
-                            if data_subtype == UPDATE_VERSION:
+                            if data_subtype == UPDATE_VERSION: # Client has pushed their update version
                                 response_data["update_version"] = key.data.inb.decode()
-                            elif data_subtype == UPDATE_VERSION_PUSH:
-                                _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
+                            # elif data_subtype == UPDATE_VERSION_PUSH:
+                            #     _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
                             key.data.outb = DATA_RECEIVED_ACK
 
                         if key.data.inb == DATA_RECEIVED_ACK:
@@ -175,20 +198,27 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if key.data.outb:
                         print("Creating payload ...")
 
-                        dotenv.load_dotenv()
-                        database = os.getenv("SERVER_DATABASE") # Not using a default database
-
-                        db_connection = sqlite3.connect(database)
-                        cursor = db_connection.cursor()
-                        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
-                        db_connection.close()
+                        # Retrieve symmetric encryption key based on the encryption algorithm
+                        # Checks if security is turned on for the purposes of demonstration
+                        # Would not be used in real application
+                        encryption_key = BYTES_NONE
+                        if SECURITY == 1:
+                            dotenv.load_dotenv()
+                            database = os.getenv("SERVER_DATABASE") # Not using a default database
+                            db_connection = sqlite3.connect(database)
+                            cursor = db_connection.cursor()
+                            encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
+                            db_connection.close()
 
                         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
-                        if ret_val == PAYLOAD_CREATION_ERROR:
+                        if ret_val == PAYLOAD_ENCRYPTION_ERROR:
+                            print("Error: Failed to encrypt payload.")
+                            return PAYLOAD_ENCRYPTION_ERROR
+                        elif ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
                         
-                        # print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
                         while payload:
                             sent = connection_socket.send(payload)
                             payload = payload[sent:]

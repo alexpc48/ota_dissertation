@@ -10,7 +10,7 @@ if __name__=='__main__':
 
     dotenv.load_dotenv()
     database = os.getenv("SERVER_DATABASE")
-    # Get local host and port
+    # Get local host and port for the listening socket
     db_connection = sqlite3.connect(database)
     cursor = db_connection.cursor()
     result = (cursor.execute("SELECT local_ip, local_port FROM network_information WHERE network_id = 1")).fetchone()

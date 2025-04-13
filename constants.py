@@ -62,7 +62,7 @@ PACK_DATA_COUNT = '!IIII' # 4 Integers in the header
 UPDATE_VERSION_PUSH = 3 # A client is pushing their version number to the server
 TAG_LENGTH = 16
 NONCE_LENGTH = 16
-ENCRYPTION_ALGORITHM = 'aes_128' # none, aes_128, aes_256
+ENCRYPTION_ALGORITHM = 'aes_128' # aes_128, aes_256
 IDENTIFIER_LENGTH = 36
 SERVER_PORT = 50097
 WINDOWS_PORT = 50150
@@ -70,4 +70,4 @@ LINUX_PORT = 50069
 SECURITY = 1 # 1 = Secure, 0 = Insecure
 HASH_SIZE = 64 # SHA256 hash size in bytes
 ED25591_SIGNATURE_SIZE = 64
-SIGNATURE_ALGORITHM = 'ed25519'
+SIGNATURE_ALGORITHM = 'ed25519' # ed25519, rsa, ecdsa
