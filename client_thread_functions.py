@@ -1,16 +1,11 @@
 # HEADER FILE
 
 # Libraries
-import selectors
-import os
-import struct
-import random
-import re
 from constants import *
 from client_functions import *
 from cryptographic_functions import *
 
-# (Use of AI) Thread for displaying the options menu in a non-blocking way
+# Thread for displaying the options menu in a non-blocking way
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
     try:
         while True:
@@ -21,13 +16,14 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     print("Checking the server for updates ...")
                     _, ret_val = check_for_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
+                        print("Update check completed successfully.")
                         print("There is a new update.")
                     elif ret_val == NO_UPDATE_ERROR:
                         print("Error: There is no new udpate.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
-                        print("An error occurred.")
+                        print("An error occurred while checking for an update.")
                         print("Please check the logs for more details.")
 
                 case '2': # Download updates from the server
@@ -35,14 +31,14 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     ret_val = download_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update downloaded successfully.")
-                    elif ret_val == UPDATE_NOT_AVALIABLE:
-                        print("Error: No updates available to download.")
-                    elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
-                        print("Error: Client is not ready to receive the update.")
+                    # elif ret_val == UPDATE_NOT_AVALIABLE:
+                    #     print("Error: No updates available to download.")
+                    # elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+                    #     print("Error: Client is not ready to receive the update.")
                     elif ret_val == QUEUED_UPDATE_ERROR:
                         print("Error: There is an update already queued for install.")
                     else:
-                        print("An error occurred.")
+                        print("An error occurred while downloading an update.")
                         print("Please check the logs for more details.")
 
                 case '3': # Install the update
@@ -57,7 +53,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     elif ret_val == UPDATE_INSTALL_ERROR:
                         print("Error: There was an error installing the udpate.")
                     else:
-                        print("An error occurred.")
+                        print("An error occurred while installing the update.")
                         print("Please check the logs for more details.")
 
                 case '10': # Change the update readiness status
@@ -68,7 +64,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     elif ret_val == UPDATE_STATUS_REPEAT_ERROR:
                         print("Error: Update readiness status is already set to the same value.")
                     else:
-                        print("An error occured.")
+                        print("An error occured while changing the update readiness status.")
                         print("Please check the logs for more details.")
 
                 case '20': # Check the update readiness
@@ -77,18 +73,20 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     if ret_val == SUCCESS:
                         print("Update readiness status checked successfully.")
                         print(f"Update readiness status: {update_readiness_status}")
+                    elif ret_val == CHECK_UPDATE_ERROR:
+                        print("Error: Update readiness status check failed.")
                     else:
-                        print("An error occured.")
+                        print("An error occured while checking the update readiness status.")
                         print("Please check the logs for more details.")
 
-                case '22':
+                case '22': # Displays the current update version installed
                     print("Displaying the update version ...")
                     update_version, _, ret_val = get_update_version()
                     if ret_val == SUCCESS:
                         print(f"Update version: {update_version}")
                         print("Update version checked successfully.")
                     else:
-                        print("An error occured.")
+                        print("An error occured while checking the update version.")
                         print("Please check the logs for more details.")
 
                 case '98': # Redisplay the options menu
