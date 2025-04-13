@@ -2,6 +2,7 @@ import platform
 import subprocess
 
 # AI used
+# TODO: Rewrite and integrate for setup_db
 # Gets the BIOS UUID of the system which is used as the unique identifier for the vehicle
 def get_bios_uuid():
     try:

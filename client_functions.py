@@ -2,7 +2,6 @@
 
 # Libraries
 import threading
-import dotenv
 import platform
 
 from constants import *

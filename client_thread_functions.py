@@ -238,7 +238,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Checks if security is turned on for the purposes of demonstration
                         # Would not be used in real application
                         encryption_key = BYTES_NONE
-                        if SECURITY == 1:
+                        if os.getenv('SECURITY_MODE') == 1:
                             db_connection = sqlite3.connect(database)
                             cursor = db_connection.cursor()
                             encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
