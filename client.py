@@ -1,6 +1,6 @@
 # Libraries
 import sys
-from client_functions import *
+
 from client_thread_functions import *
 
 # Main program
@@ -8,25 +8,23 @@ if __name__=='__main__':
     # Create a selector object
     selector = selectors.DefaultSelector()
 
+    # Get local host and port for the listening socket
     database, ret_val = get_client_database()
-    if ret_val == SUCCESS:
-        print("Database name retrieved successfully.")
-    else:
+    if ret_val == ERROR:
         print("An error occurred while retrieving the database name.")
         print("Please check the logs for more details.")
         sys.exit(ERROR)
-    # Get local host and port
     db_connection = sqlite3.connect(database)
     cursor = db_connection.cursor()
     result = (cursor.execute("SELECT local_ip, local_port FROM network_information WHERE network_id = 1")).fetchone()
-    db_connection.close()
     local_host, local_port = result[0], result[1]
+    db_connection.close()
     
-    # Create listening socket so that the server can connect forcefully (i.e, push updates to client)
+    # Create listening socket so that the server can connect forcefully (e.g., push updates to client)
     print(f"Creating listening socket on {local_host}:{local_port} ...")
     ret_val = create_listening_socket(local_host, local_port, selector)
-    if ret_val != SUCCESS:
-        print('Failed to create listening socket')
+    if ret_val == LISTENING_SOCKET_CREATION_ERROR:
+        print("Failed to create listening socket")
         sys.exit(ret_val)
 
     # TODO: https://chatgpt.com/share/67e84e7a-d6c4-800e-8a96-363fbded93a6

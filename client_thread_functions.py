@@ -97,7 +97,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     # TODO: Implement proper graceful exit
                     os._exit(SUCCESS)
                 
-                case _:
+                case _: # Default case for invalid options
                     print(f"Invalid option '{option}' entered.")
 
     except KeyboardInterrupt:
@@ -109,12 +109,13 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
         # TODO: Implement proper graceful exit
         os._exit(ERROR)
 
+# Thread for constatntly listening for connections from the server
 def listen(selector: selectors.SelectSelector) -> None:
     try:
         while True:
             # Get list of events from the selector
             timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
+            events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid connection collisions
             if events:
                 for key, _ in events:
                     # If the event comes from the listening socket, accept the new connection
@@ -125,7 +126,7 @@ def listen(selector: selectors.SelectSelector) -> None:
                         elif ret_val == CONNECTION_ACCEPT_ERROR:
                             print("Error: Failed to accept new connection.")
                         else:
-                            print("An error occurred while accepting the connection.")
+                            print("An error occurred while accepting a new connection.")
                             print("Please check the logs for more details.")
 
     except Exception as e:
@@ -133,16 +134,16 @@ def listen(selector: selectors.SelectSelector) -> None:
         # TODO: Implement proper graceful exit
         os._exit(LISTENING_ERROR)
 
+# Thread for servicing active connections
 def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict,) -> int:
     try:
         while True:
             # Get list of events from the selector
             timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval) # Refreshes in random intervals to avoid collisions
+            events = selector.select(timeout=timeout_interval)
             for key, mask in events:
-                # AI assistance used for the idea of how to create the custom header for the packet
 
-                # Service active socket connections, not the listening socket
+                # Service active socket connections only, not the listening socket
                 if key.data == "listening_socket":
                     continue
 
@@ -152,6 +153,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 # Read events
                 if mask & selectors.EVENT_READ:
                     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+                    
                     key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
@@ -165,7 +167,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         return INVALID_PAYLOAD_ERROR
 
                     if ret_val == SUCCESS:
-
                         if key.data.inb == UPDATE_AVALIABLE:
                             print("There is an update available.")
                             response_data["update_available"] = True
@@ -176,6 +177,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
                             print("Update readiness status request received.")
+                            print("Checking the update readiness status ...")
                             update_readiness, _, _ = check_update_readiness_status()
                             if update_readiness == True:
                                 print("Client is ready to receive the update.")
@@ -186,7 +188,12 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                         elif key.data.inb == UPDATE_VERSION_REQUEST:
                             print("Update version request received.")
-                            _, update_version_bytes, _ = get_update_version()
+                            print("Retrieving the update version ...")
+                            _, update_version_bytes, ret_val = get_update_version()
+                            if ret_val == ERROR:
+                                print("An error occurred while retrieving the update version.")
+                                print("Please check the logs for more details.")
+                                return ERROR
                             key.data.outb = update_version_bytes
                             key.data.data_subtype = UPDATE_VERSION
 
@@ -199,17 +206,18 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 elif ret_val == DOWNLOAD_UPDATE_ERROR:
                                     print("Error: Failed to write update file to database.")
                                     return DOWNLOAD_UPDATE_ERROR
-                                else:
+                                else: # ERROR will be from getting database name
                                     print("An error occurred while retrieving the database name.")
                                     print("Please check the logs for more details.")
                                     return ERROR
 
+                        # Check if the data received is an acknowledgment for all data commmunications finished
                         if key.data.inb == DATA_RECEIVED_ACK:
-                            print("The data was received.")
                             print(f"Connection closed by {remote_host}:{remote_port}.")
                             _ = close_connection(connection_socket, selector)
                             response_event.set() # Set completion flag for completed connection
                             
+                        # Send an acknowledgment if the data was received and nothing needs to be sent back
                         elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
                             key.data.outb = DATA_RECEIVED_ACK
 
@@ -221,21 +229,26 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         print("Creating payload ...")
                         
                         database, ret_val = get_client_database()
-                        if ret_val == SUCCESS:
-                            print("Database name retrieved successfully.")
-                        else:
+                        if ret_val == ERROR:
                             print("An error occurred while retrieving the database name.")
                             print("Please check the logs for more details.")
                             return ERROR
                         
-                        # Retrieve AES key based on the encryption algorithm
-                        db_connection = sqlite3.connect(database)
-                        cursor = db_connection.cursor()
-                        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
-                        db_connection.close()
+                        # Retrieve symmetric encryption key based on the encryption algorithm
+                        # Checks if security is turned on for the purposes of demonstration
+                        # Would not be used in real application
+                        encryption_key = BYTES_NONE
+                        if SECURITY == 1:
+                            db_connection = sqlite3.connect(database)
+                            cursor = db_connection.cursor()
+                            encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
+                            db_connection.close()
 
                         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
-                        if ret_val == PAYLOAD_CREATION_ERROR:
+                        if ret_val == PAYLOAD_ENCRYPTION_ERROR:
+                            print("Error: Failed to encrypt payload.")
+                            return PAYLOAD_ENCRYPTION_ERROR
+                        elif ret_val == PAYLOAD_CREATION_ERROR:
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
                         
@@ -248,6 +261,5 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        # Doesn't need to exit program, just return error code
         _ = close_connection(connection_socket, selector)
         return CONNECTION_SERVICE_ERROR

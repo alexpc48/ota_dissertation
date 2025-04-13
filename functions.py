@@ -65,6 +65,7 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         _ = close_connection(listening_socket, selector)
         return LISTENING_SOCKET_CREATION_ERROR
     
+# Needs to only acept valid connectsion
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
         print("Accepting new connection ...")
