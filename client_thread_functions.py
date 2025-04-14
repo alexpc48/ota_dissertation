@@ -135,7 +135,7 @@ def listen(selector: selectors.SelectSelector) -> None:
         os._exit(LISTENING_ERROR)
 
 # Thread for servicing active connections
-def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict,) -> int:
+def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         while True:
             # Get list of events from the selector
@@ -149,79 +149,84 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                
-                # Read events
-                if mask & selectors.EVENT_READ:
-                    print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                    
-                    key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
-                    if ret_val == CONNECTION_CLOSE_ERROR:
-                        print(f"Connection closed by {remote_host}:{remote_port}.")
-                        _ = close_connection(connection_socket, selector)
-                        response_event.set() # Set completion flag for completed connection
-                    if ret_val == PAYLOAD_RECEIVE_ERROR:
-                        print("Error: Failed to receive payload.")
-                        return PAYLOAD_RECEIVE_ERROR
-                    if ret_val == INVALID_PAYLOAD_ERROR:
-                        print("Error: Invalid payload received.")
-                        return INVALID_PAYLOAD_ERROR
 
-                    if ret_val == SUCCESS:
-                        if key.data.inb == UPDATE_AVALIABLE:
-                            print("There is an update available.")
-                            response_data["update_available"] = True
-                            
-                        elif key.data.inb == UPDATE_NOT_AVALIABLE:
-                            print("There is no update available.")
-                            response_data["update_available"] = False
+                if key.data.outb != HANDSHAKE_COMPLETE:
 
-                        elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
-                            print("Update readiness status request received.")
-                            print("Checking the update readiness status ...")
-                            update_readiness, _, _ = check_update_readiness_status()
-                            if update_readiness == True:
-                                print("Client is ready to receive the update.")
-                                key.data.outb = UPDATE_READY
-                            elif update_readiness == False:
-                                print("Client is not ready to receive the update.")
-                                key.data.outb = UPDATE_NOT_READY
-
-                        elif key.data.inb == UPDATE_VERSION_REQUEST:
-                            print("Update version request received.")
-                            print("Retrieving the update version ...")
-                            _, update_version_bytes, ret_val = get_update_version()
-                            if ret_val == ERROR:
-                                print("An error occurred while retrieving the update version.")
-                                print("Please check the logs for more details.")
-                                return ERROR
-                            key.data.outb = update_version_bytes
-                            key.data.data_subtype = UPDATE_VERSION
-
-                        elif data_type == DATA:
-                            if data_subtype == UPDATE_FILE:
-                                ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
-                                if ret_val == SUCCESS:
-                                    print("Update file written to database successfully.")
-                                    key.data.file_name = BYTES_NONE
-                                elif ret_val == DOWNLOAD_UPDATE_ERROR:
-                                    print("Error: Failed to write update file to database.")
-                                    return DOWNLOAD_UPDATE_ERROR
-                                else: # ERROR will be from getting database name
-                                    print("An error occurred while retrieving the database name.")
-                                    print("Please check the logs for more details.")
-                                    return ERROR
-
-                        # Check if the data received is an acknowledgment for all data commmunications finished
-                        if key.data.inb == DATA_RECEIVED_ACK:
+                    # Read events
+                    if mask & selectors.EVENT_READ:
+                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
+                        
+                        key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
+                        if ret_val == CONNECTION_CLOSE_ERROR:
                             print(f"Connection closed by {remote_host}:{remote_port}.")
                             _ = close_connection(connection_socket, selector)
                             response_event.set() # Set completion flag for completed connection
-                            
-                        # Send an acknowledgment if the data was received and nothing needs to be sent back
-                        elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
-                            key.data.outb = DATA_RECEIVED_ACK
+                        if ret_val == PAYLOAD_RECEIVE_ERROR:
+                            print("Error: Failed to receive payload.")
+                            return PAYLOAD_RECEIVE_ERROR
+                        if ret_val == INVALID_PAYLOAD_ERROR:
+                            print("Error: Invalid payload received.")
+                            return INVALID_PAYLOAD_ERROR
 
-                    key.data.inb = BYTES_NONE  # Clear the input buffer
+                        if ret_val == SUCCESS:
+                            if key.data.inb == HANDSHAKE_COMPLETE:
+                                
+
+                            elif key.data.inb == UPDATE_AVALIABLE:
+                                print("There is an update available.")
+                                response_data["update_available"] = True
+                                
+                            elif key.data.inb == UPDATE_NOT_AVALIABLE:
+                                print("There is no update available.")
+                                response_data["update_available"] = False
+
+                            elif key.data.inb == UPDATE_READINESS_STATUS_REQUEST:
+                                print("Update readiness status request received.")
+                                print("Checking the update readiness status ...")
+                                update_readiness, _, _ = check_update_readiness_status()
+                                if update_readiness == True:
+                                    print("Client is ready to receive the update.")
+                                    key.data.outb = UPDATE_READY
+                                elif update_readiness == False:
+                                    print("Client is not ready to receive the update.")
+                                    key.data.outb = UPDATE_NOT_READY
+
+                            elif key.data.inb == UPDATE_VERSION_REQUEST:
+                                print("Update version request received.")
+                                print("Retrieving the update version ...")
+                                _, update_version_bytes, ret_val = get_update_version()
+                                if ret_val == ERROR:
+                                    print("An error occurred while retrieving the update version.")
+                                    print("Please check the logs for more details.")
+                                    return ERROR
+                                key.data.outb = update_version_bytes
+                                key.data.data_subtype = UPDATE_VERSION
+
+                            elif data_type == DATA:
+                                if data_subtype == UPDATE_FILE:
+                                    ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)
+                                    if ret_val == SUCCESS:
+                                        print("Update file written to database successfully.")
+                                        key.data.file_name = BYTES_NONE
+                                    elif ret_val == DOWNLOAD_UPDATE_ERROR:
+                                        print("Error: Failed to write update file to database.")
+                                        return DOWNLOAD_UPDATE_ERROR
+                                    else: # ERROR will be from getting database name
+                                        print("An error occurred while retrieving the database name.")
+                                        print("Please check the logs for more details.")
+                                        return ERROR
+
+                            # Check if the data received is an acknowledgment for all data commmunications finished
+                            if key.data.inb == DATA_RECEIVED_ACK:
+                                print(f"Connection closed by {remote_host}:{remote_port}.")
+                                _ = close_connection(connection_socket, selector)
+                                response_event.set() # Set completion flag for completed connection
+                                
+                            # Send an acknowledgment if the data was received and nothing needs to be sent back
+                            elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                                key.data.outb = DATA_RECEIVED_ACK
+
+                        key.data.inb = BYTES_NONE  # Clear the input buffer
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
@@ -238,7 +243,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Checks if security is turned on for the purposes of demonstration
                         # Would not be used in real application
                         encryption_key = BYTES_NONE
-                        print(SECURITY_MODE)
                         if SECURITY_MODE == 1:
                             db_connection = sqlite3.connect(database)
                             cursor = db_connection.cursor()

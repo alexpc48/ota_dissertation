@@ -176,7 +176,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
             print("Please check the logs for more details.")
             return BOOL_NONE, ERROR
 
-        selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
+        selector, connection_socket, ret_val = create_connection(server_host, server_port, selector, response_event)
         if ret_val == CONNECTION_INITIATE_ERROR:
             print("Error: Connection initiation failed.")
             return BOOL_NONE, CONNECTION_INITIATE_ERROR

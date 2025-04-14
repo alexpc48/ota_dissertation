@@ -140,35 +140,37 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 if mask & selectors.EVENT_READ:
                     print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
 
-                    buffer = b''
-                    delimiter = b'\n'
-                    while delimiter not in buffer:
-                        try:
-                            chunk = connection_socket.recv(BYTES_TO_READ)
-                            if not chunk:
-                                # Connection closed
-                                break
-                            buffer += chunk
+                    # buffer = b''
+                    # delimiter = b'\n'
+                    # while delimiter not in buffer:
+                    #     try:
+                    #         chunk = connection_socket.recv(BYTES_TO_READ)
+                    #         print(chunk)
+                    #         if not chunk:
+                    #             # Connection closed
+                    #             break
+                    #         buffer += chunk
 
-                        except ssl.SSLWantReadError:
-                            print("SSLWantReadError: Waiting for more data to be readable...")
-
-                        except ssl.SSLWantWriteError:
-                            print("SSLWantWriteError: Waiting until socket is writable...")
-                        except BlockingIOError:
-                            print("Socket is busy, waiting for data...")
-                        except socket.error as e:
-                            print(f"Socket error during recv: {e}")
-                            return ERROR
-                        except ssl.SSLError as e:
-                            print(f"SSL error during recv: {e}")
-                            return ERROR
-                        except Exception as e:
-                            print(f"Unexpected error during recv: {e}")
-                            return ERROR
-                    if delimiter in buffer:
-                        print(buffer)
-                    return SUCCESS
+                    #     except ssl.SSLWantReadError:
+                    #         # print("SSLWantReadError: Waiting for more data to be readable...")
+                    #         continue
+                    #     except ssl.SSLWantWriteError:
+                    #         # print("SSLWantWriteError: Waiting until socket is writable...")
+                    #         continue
+                    #     except BlockingIOError:
+                    #         print("Socket is busy, waiting for data...")
+                    #     except socket.error as e:
+                    #         print(f"Socket error during recv: {e}")
+                    #         return ERROR
+                    #     except ssl.SSLError as e:
+                    #         print(f"SSL error during recv: {e}")
+                    #         return ERROR
+                    #     except Exception as e:
+                    #         print(f"Unexpected error during recv: {e}")
+                    #         return ERROR
+                    # if delimiter in buffer:
+                    #     print(buffer)
+                    # return SUCCESS
                     
                     key.data.file_name, key.data.inb, data_type, data_subtype, key.data.identifier, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
@@ -232,7 +234,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
-                    print('writing')
                     if key.data.outb:
                         print("Creating payload ...")
 
