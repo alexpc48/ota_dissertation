@@ -136,7 +136,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 # Read events
                 if mask & selectors.EVENT_READ:
-                    key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
+                    key.data.file_name, key.data.inb, data_type, data_subtype, key.data.identifier, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
                         _ = close_connection(connection_socket, selector)

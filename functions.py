@@ -9,14 +9,14 @@ import struct
 import types
 import errno
 import time
-import threading
+import ssl
 import constants
 
 from constants import *
 from cryptographic_functions import *
 
 # Closes connection with the socket and selector specified
-def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
+def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.SelectSelector) -> int:
     try:
         try:
             selector.get_key(connection_socket)  # This will raise KeyError if not registered
@@ -26,6 +26,21 @@ def close_connection(connection_socket: socket.socket, selector: selectors.Selec
             print("Socket is not registered with selector.")
 
         if connection_socket.fileno() != -1:
+            # Waits until client sends its close_notify
+            # FIXME: Implement default timeout
+            while True:
+                try:
+                    print("Unwrapping TLS ...")
+                    connection_socket = connection_socket.unwrap() # Removes TLS
+                    break
+                except ssl.SSLWantReadError:
+                    continue
+                except ssl.SSLWantWriteError:
+                    continue
+                except Exception as e:
+                    print(f"An error occurred during unwrap: {e}")
+                    break
+            print("Closing socket ...")
             connection_socket.close()
             print("Socket closed.")
         else:
@@ -70,7 +85,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         print("Accepting new connection ...")
 
         # TLS implementation
-        import ssl
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
         context.options |= ssl.OP_NO_SSLv2
         context.options |= ssl.OP_NO_SSLv3
@@ -116,16 +130,16 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
                     if mask & selectors.EVENT_READ:                        
                         try:
                             data.inb = connection_socket.recv(STATUS_CODE_SIZE)
-                            if data.inb == HANDSHAKE_COMPLETE and data.handshake_complete == False:
+                            if data.inb == HANDSHAKE_COMPLETE:
                                 print("TLS handshake complete.")
-                                data.handshake_complete = True
-                                data.outb = HANDSHAKE_COMPLETE
+                                data.outb = HANDSHAKE_FINISHED
+                            data.handshake_complete = True
                         except ssl.SSLWantReadError:
                             continue
                         except ssl.SSLWantWriteError:
                             continue
                 if mask & selectors.EVENT_WRITE:
-                    if data.outb == HANDSHAKE_COMPLETE:
+                    if data.outb:
                         while data.outb:
                             sent = connection_socket.send(data.outb)
                             data.outb = data.outb[sent:]
@@ -139,7 +153,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
                 print(f"data.inb: {data.inb}")
                 print(f"data.outb: {data.outb}")
                 break
-
+        print(type(connection_socket))
         print("TLS handshake successful.")
         return SUCCESS
     
@@ -150,7 +164,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     
 # Creates a connection to an endpoint
 # TODO: Only connect to registered endpoints
-def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, socket.socket, int]:
+def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
 
@@ -159,7 +173,6 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         connection_socket.setblocking(False)
 
         # TLS implementation
-        import ssl
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
         context.options |= ssl.OP_NO_SSLv2
         context.options |= ssl.OP_NO_SSLv3
@@ -249,16 +262,16 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                     if mask & selectors.EVENT_READ:                        
                         try:
                             data.inb = connection_socket.recv(STATUS_CODE_SIZE)
-                            if data.inb == HANDSHAKE_COMPLETE and data.handshake_complete == False:
+                            if data.inb == HANDSHAKE_COMPLETE:
                                 print("TLS handshake complete.")
-                                data.handshake_complete = True
-                                data.outb = HANDSHAKE_COMPLETE
+                                data.outb = HANDSHAKE_FINISHED
+                            data.handshake_complete = True
                         except ssl.SSLWantReadError:
                             continue
                         except ssl.SSLWantWriteError:
                             continue
                 if mask & selectors.EVENT_WRITE:
-                    if data.outb == HANDSHAKE_COMPLETE:
+                    if data.outb:
                         while data.outb:
                             sent = connection_socket.send(data.outb)
                             data.outb = data.outb[sent:]
@@ -300,7 +313,7 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
 
 
 # Receives the payload from the socket
-def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
+def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
         file_name = BYTES_NONE # Initialise variable
 
