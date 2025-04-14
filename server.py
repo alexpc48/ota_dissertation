@@ -35,7 +35,7 @@ if __name__=='__main__':
     options_menu_thread = threading.Thread(target=menu_thread, daemon=False, args=(selector, response_event, response_data))
 
     # Constantly listens for new connections
-    listen_thread = threading.Thread(target=listen, daemon=False, args=(selector, response_event))
+    listen_thread = threading.Thread(target=listen, daemon=False, args=(selector,))
 
     # Services any active connections
     service_connection_thread = threading.Thread(target=service_connection, daemon=False, args=(selector, response_event, response_data))

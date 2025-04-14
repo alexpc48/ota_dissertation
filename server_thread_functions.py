@@ -94,7 +94,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
         # TODO: Implement proper graceful exit
         os._exit(ERROR)
 
-def listen(selector: selectors.SelectSelector, response_event: threading.Event) -> None:
+def listen(selector: selectors.SelectSelector) -> None:
     try:
         while True:
             # Get list of events from the selector
@@ -104,7 +104,7 @@ def listen(selector: selectors.SelectSelector, response_event: threading.Event) 
                 for key, _ in events:
                     # If the event comes from the listening socket, accept the new connection
                     if key.data == "listening_socket":
-                        ret_val = accept_new_connection(key.fileobj, selector, response_event)
+                        ret_val = accept_new_connection(key.fileobj, selector)
                         if ret_val == SUCCESS:
                             print("New connection accepted.")
                         elif ret_val == CONNECTION_ACCEPT_ERROR:
@@ -134,74 +134,66 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
 
-                if key.data.outb != HANDSHAKE_COMPLETE:
+                # Read events
+                if mask & selectors.EVENT_READ:
+                    key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
+                    if ret_val == CONNECTION_CLOSE_ERROR:
+                        print(f"Connection closed by {remote_host}:{remote_port}.")
+                        _ = close_connection(connection_socket, selector)
+                        response_event.set() # Set completion flag for completed connection
+                    if ret_val == PAYLOAD_RECEIVE_ERROR:
+                        print("Error: Failed to receive payload.")
+                        return PAYLOAD_RECEIVE_ERROR
+                    if ret_val == INVALID_PAYLOAD_ERROR:
+                        print("Error: Invalid payload received.")
+                        return INVALID_PAYLOAD_ERROR
 
-                    # Read events
-                    if mask & selectors.EVENT_READ:                        
-                        key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
-                        if ret_val == CONNECTION_CLOSE_ERROR:
+                    if ret_val == SUCCESS:
+                        if key.data.inb == UPDATE_CHECK_REQUEST:
+                            print("Update check request received.")
+                            print("Checking for new updates ...")
+                            update_available, update_available_bytes = check_for_updates()
+                            if update_available == True:
+                                print("New update available.")
+                                key.data.outb = update_available_bytes
+                            elif update_available == False:
+                                print("No new updates available.")
+                                key.data.outb = update_available_bytes
+
+                        elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
+                            print("Update download request received.")
+                            key.data.file_name, file_data, ret_val = get_update_file()
+                            if ret_val == ERROR:
+                                print("Error: Failed to get update file.")
+                                return ERROR
+                            key.data.outb = file_data
+                            key.data.data_subtype = UPDATE_FILE
+
+                        elif key.data.inb == UPDATE_READY:
+                            print("The client is ready to install the update.")
+                            response_data["update_readiness"] = True
+
+                        elif key.data.inb == UPDATE_NOT_READY:
+                            print("The client is not ready to install the update.")
+                            response_data["update_readiness"] = False
+                        
+                        elif data_type == DATA:
+                            if data_subtype == UPDATE_VERSION: # Client has pushed their update version
+                                response_data["update_version"] = key.data.inb.decode()
+                            # elif data_subtype == UPDATE_VERSION_PUSH:
+                            #     _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
+                            key.data.outb = DATA_RECEIVED_ACK
+
+                        if key.data.inb == DATA_RECEIVED_ACK:
+                            print("The data was received.")
                             print(f"Connection closed by {remote_host}:{remote_port}.")
                             _ = close_connection(connection_socket, selector)
                             response_event.set() # Set completion flag for completed connection
-                        if ret_val == PAYLOAD_RECEIVE_ERROR:
-                            print("Error: Failed to receive payload.")
-                            return PAYLOAD_RECEIVE_ERROR
-                        if ret_val == INVALID_PAYLOAD_ERROR:
-                            print("Error: Invalid payload received.")
-                            return INVALID_PAYLOAD_ERROR
-
-                        if ret_val == SUCCESS:
-                            if key.data.inb == HANDSHAKE_COMPLETE and key.data.handshake_complete == False:
-                                print("Handshake complete.")
-                                key.data.handshake_complete = True
-                                key.data.outb = HANDSHAKE_COMPLETE
-                                response_event.set()
-
-                            elif key.data.inb == UPDATE_CHECK_REQUEST:
-                                print("Update check request received.")
-                                print("Checking for new updates ...")
-                                update_available, update_available_bytes = check_for_updates()
-                                if update_available == True:
-                                    print("New update available.")
-                                    key.data.outb = update_available_bytes
-                                elif update_available == False:
-                                    print("No new updates available.")
-                                    key.data.outb = update_available_bytes
-
-                            elif key.data.inb == UPDATE_DOWNLOAD_REQUEST:
-                                print("Update download request received.")
-                                key.data.file_name, file_data, ret_val = get_update_file()
-                                if ret_val == ERROR:
-                                    print("Error: Failed to get update file.")
-                                    return ERROR
-                                key.data.outb = file_data
-                                key.data.data_subtype = UPDATE_FILE
-
-                            elif key.data.inb == UPDATE_READY:
-                                print("The client is ready to install the update.")
-                                response_data["update_readiness"] = True
-
-                            elif key.data.inb == UPDATE_NOT_READY:
-                                print("The client is not ready to install the update.")
-                                response_data["update_readiness"] = False
                             
-                            elif data_type == DATA:
-                                if data_subtype == UPDATE_VERSION: # Client has pushed their update version
-                                    response_data["update_version"] = key.data.inb.decode()
-                                # elif data_subtype == UPDATE_VERSION_PUSH:
-                                #     _ = store_update_version(key.data.inb.decode(), selector, connection_socket)
-                                key.data.outb = DATA_RECEIVED_ACK
+                        elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
+                            key.data.outb = DATA_RECEIVED_ACK
 
-                            if key.data.inb == DATA_RECEIVED_ACK:
-                                print("The data was received.")
-                                print(f"Connection closed by {remote_host}:{remote_port}.")
-                                _ = close_connection(connection_socket, selector)
-                                response_event.set() # Set completion flag for completed connection
-                                
-                            elif key.data.inb != DATA_RECEIVED_ACK and not key.data.outb:
-                                key.data.outb = DATA_RECEIVED_ACK
-
-                        key.data.inb = BYTES_NONE  # Clear the input buffer
+                    key.data.inb = BYTES_NONE  # Clear the input buffer
 
                 # Write events
                 if mask & selectors.EVENT_WRITE:
