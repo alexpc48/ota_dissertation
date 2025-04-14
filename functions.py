@@ -172,6 +172,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             # Formatted queries acceptable since variables are not user input
             # Potential for risk identifier is captured and replayed as SQL injection attack
             _, port = LISTENING_SOCKET_INFO
+            dotenv.load_dotenv()
             if port == SERVER_PORT:
                 database = os.getenv("SERVER_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ? LIMIT 1" # (identifier,)
@@ -275,6 +276,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
 def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
         # Query for getting relevant database
+        dotenv.load_dotenv()
         _, port = LISTENING_SOCKET_INFO
         if port == SERVER_PORT:
             database = os.getenv("SERVER_DATABASE")

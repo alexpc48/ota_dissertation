@@ -4,6 +4,8 @@
 from constants import *
 from server_functions import *
 
+dotenv.load_dotenv(override=True)
+
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
     try:
         while True:
@@ -69,8 +71,8 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                 case '30':
                     continue
 
-                case '40':
-                    _ = change_security_status()
+                # case '40':
+                    # _ = change_security_status()
 
                 case '98': # Redisplay the options menu
                     continue
@@ -205,7 +207,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Checks if security is turned on for the purposes of demonstration
                         # Would not be used in real application
                         encryption_key = BYTES_NONE
-                        if os.getenv('SECURITY_MODE') == 1:
+                        if SECURITY_MODE == 1:
                             dotenv.load_dotenv()
                             database = os.getenv("SERVER_DATABASE") # Not using a default database
                             db_connection = sqlite3.connect(database)

@@ -3,6 +3,8 @@ import sys
 from server_functions import *
 from server_thread_functions import *
 
+# dotenv.load_dotenv(override=True)
+
 # Main program
 if __name__=='__main__':
     # Create a selector object

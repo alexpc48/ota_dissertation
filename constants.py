@@ -68,7 +68,7 @@ IDENTIFIER_LENGTH = 36
 SERVER_PORT = 50097
 WINDOWS_PORT = 50150
 LINUX_PORT = 50069
-# SECURITY = 1 # 1 = Secure, 0 = Insecure
+SECURITY_MODE = 1 # 1 = Secure, 0 = Insecure - Used for demonstration purposes
 HASH_SIZE = 64 # SHA256 hash size in bytes
 ED25591_SIGNATURE_SIZE = 64
 SIGNATURE_ALGORITHM = 'ed25519' # ed25519, rsa, ecdsa

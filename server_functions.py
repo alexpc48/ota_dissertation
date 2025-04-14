@@ -20,8 +20,8 @@ def options_menu() -> str:
     print("20. Change the update file") # TODO
     print("-------------------------------------------------------------------------------------------")
     print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
-    print("-------------------------------------------------------------------------------------------")
-    print("40. Change security status") # Changes if security is enabled or not (TESTING ONLY - would not be in a real application)
+    # print("-------------------------------------------------------------------------------------------")
+    # print("40. Change security status") # Changes if security is enabled or not (TESTING ONLY - would not be in a real application)
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
@@ -29,31 +29,30 @@ def options_menu() -> str:
 
     return input("Enter an option: ")
 
-# Changes security status
-def change_security_status() -> int:
-    try:
-        dotenv.load_dotenv(override=True) # Refreshes for the security mode variable
-        print(f"Current security status: {os.getenv('SECURITY_MODE')}")
-        new_security_mode = input("Enter a new security status (1 = Secure, 0 = Insecure): ")
+# # Changes security status
+# def change_security_status() -> int:
+#     try:
+#         print(f"Current security status: {SECURITY_MODE}")
+#         new_security_mode = input("Enter a new security status (1 = Secure, 0 = Insecure): ")
 
-        # Re-write the .env file with the new security mode
-        # TESTIG ONLY
-        # Would not be in a real application
-        # Used so application does not need to be recompiled to change security mode
-        with open('.env', 'r') as file:
-            lines = file.readlines()
-        with open('.env', 'w') as file:
-            for line in lines:
-                if 'SECURITY_MODE' in line:
-                    file.write(f'SECURITY_MODE = {new_security_mode}\n')
-                else:
-                    file.write(line)
+#         # Re-writes the CONSTANTS file with the new security mode
+#         # TESTIG ONLY
+#         # Would not be in a real application
+#         # Used so application does not need to be recompiled to change security mode
+#         with open('constants.py', 'r') as file:
+#             lines = file.readlines()
+#         with open('constatnts.py', 'w') as file:
+#             for line in lines:
+#                 if 'SECURITY_MODE' in line:
+#                     file.write(f'SECURITY_MODE = {new_security_mode}\n')
+#                 else:
+#                     file.write(line)
 
-        return SUCCESS
+#         return SUCCESS
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return ERROR
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         return ERROR
 
 # Get a list of the clients in the database and their network information
 def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
