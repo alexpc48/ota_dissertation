@@ -9,6 +9,7 @@ import struct
 import types
 import errno
 import time
+import threading
 import constants
 
 from constants import *
@@ -64,7 +65,7 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
     
 # Accepts new connections
 # TODO: Only accept registerd connection endpoints
-def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
+def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector, response_event: threading.Event) -> int:
     try:
         print("Accepting new connection ...")
 
@@ -92,11 +93,19 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
 
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE)
+        data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
         # print("[ACK]")
+
+        print("Performing TLS handshake ...")
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return BOOL_NONE, CONNECTION_SERVICE_ERROR
+        print("TLS handshake successful.")
         return SUCCESS
     
     except Exception as e:
@@ -106,7 +115,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     
 # Creates a connection to an endpoint
 # TODO: Only connect to registered endpoints
-import threading
 def create_connection(host: str, port: int, selector: selectors.SelectSelector, response_event: threading.Event) -> typing.Tuple[selectors.SelectSelector, socket.socket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
@@ -196,6 +204,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector, 
         if not response_event.is_set():
             print("Timeout waiting for client response.")
             return BOOL_NONE, CONNECTION_SERVICE_ERROR
+        print("TLS handshake successful.")
 
         return selector, connection_socket, SUCCESS
     
@@ -212,7 +221,6 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
 
         # Read the packet header
         # Receive packed data (integers)
-        print("Receiving header ...")
         while True:
             try:
                 header = connection_socket.recv(PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header

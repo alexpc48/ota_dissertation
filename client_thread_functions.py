@@ -153,9 +153,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 if key.data.outb != HANDSHAKE_COMPLETE:
 
                     # Read events
-                    if mask & selectors.EVENT_READ:
-                        print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                        
+                    if mask & selectors.EVENT_READ:                        
                         key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
                         if ret_val == CONNECTION_CLOSE_ERROR:
                             print(f"Connection closed by {remote_host}:{remote_port}.")
@@ -169,8 +167,11 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             return INVALID_PAYLOAD_ERROR
 
                         if ret_val == SUCCESS:
-                            if key.data.inb == HANDSHAKE_COMPLETE:
-                                
+                            if key.data.inb == HANDSHAKE_COMPLETE and key.data.handshake_complete == False:
+                                print("Handshake complete.")
+                                key.data.handshake_complete = True
+                                key.data.outb = HANDSHAKE_COMPLETE
+                                response_event.set()
 
                             elif key.data.inb == UPDATE_AVALIABLE:
                                 print("There is an update available.")
