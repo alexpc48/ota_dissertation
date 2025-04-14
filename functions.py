@@ -67,9 +67,30 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
         print("Accepting new connection ...")
+
+        # TLS implementation
+        import ssl
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
+        context.options |= ssl.OP_NO_SSLv2
+        context.options |= ssl.OP_NO_SSLv3
+        context.options |= ssl.OP_NO_TLSv1
+        context.options |= ssl.OP_NO_TLSv1_1
+        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        connection_certificate = "server_certificate.pem"
+        connection_private_key = "server_private_key.pem"
+        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
+        root_ca = "root_ca.pem"
+        context.load_verify_locations(cafile=root_ca)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False # No hostnames in use, but real implementation would
+        context.set_debug_level(1)
+
         connection_socket, address = socket.accept()
         print(f"Accepted connection from {address[0]}:{address[1]} ...")
         connection_socket.setblocking(False)
+
+        # TLS implementation
+        connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
 
         # Register the connection with the selector
         data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE)
@@ -90,8 +111,26 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
     try:
         print(f"Initiating connection to {host}:{port} ...")
 
+       
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
+
+        # TLS implementation
+        import ssl
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
+        context.options |= ssl.OP_NO_SSLv2
+        context.options |= ssl.OP_NO_SSLv3
+        context.options |= ssl.OP_NO_TLSv1
+        context.options |= ssl.OP_NO_TLSv1_1
+        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        connection_certificate = "client_certificate.pem"
+        connection_private_key = "client_private_key.pem"
+        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
+        root_ca = "root_ca.pem"
+        context.load_verify_locations(cafile=root_ca)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False
+        context.set_debug_level(1)
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE)
@@ -127,6 +166,25 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print("Please check the host and port details.")
                 return None, None, CONNECTION_INITIATE_ERROR
 
+        # TLS implementation
+        connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False) # Wraps the socket with TLS
+        while True:
+            try:
+                print("Performing TLS handshake ...")
+                connection_socket.do_handshake()
+                print("TLS handshake successful.")
+                break
+            except ssl.SSLWantReadError:
+                # print("SSLWantReadError during handshake.")
+                continue
+            except ssl.SSLWantWriteError:
+                print("SSLWantWriteError during handshake.")
+            except ssl.SSLError as e:
+                print(f"SSLError during handshake: {e}")
+                return False
+            except Exception as e:
+                print(f"An unexpected error occurred during handshake: {e}")
+                return False
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
         print("Socket registered.")
