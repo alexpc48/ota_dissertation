@@ -4,8 +4,6 @@
 from constants import *
 from server_functions import *
 
-dotenv.load_dotenv(override=True)
-
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
     try:
         while True:
@@ -55,7 +53,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         db_connection = sqlite3.connect(database)
                         cursor = db_connection.cursor()
                         # TODO: Test query
-                        result = (cursor.execute("SELECT updates.update_version, vehicles.last_poll_time FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone
+                        result = (cursor.execute("SELECT updates.update_version, vehicles.last_poll_time FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone()
                         client_update_version, last_poll_time = result[0], result[1]
                         db_connection.close()
                         # Displays the last known update version if poll fails
@@ -133,11 +131,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                
+
                 # Read events
                 if mask & selectors.EVENT_READ:
-                    print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                    
                     key.data.file_name, key.data.inb, data_type, data_subtype, key.data.identifier, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
@@ -149,9 +145,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                     if ret_val == INVALID_PAYLOAD_ERROR:
                         print("Error: Invalid payload received.")
                         return INVALID_PAYLOAD_ERROR
-                    
-                    if ret_val == SUCCESS:
 
+                    if ret_val == SUCCESS:
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
                             print("Checking for new updates ...")

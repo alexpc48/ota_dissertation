@@ -67,11 +67,11 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
 
         print("Vehicle entries in the database.")
         print("-----------------------------------------")
-        for result in result:
-            print("Vehicle Entry ID: ", result[0])
-            print("Vehicle ID: ", result[1])
-            print("Vehicle IP: ", result[2])
-            print("Vehicle Port: ", result[3])
+        for row in result:
+            print("Vehicle Entry ID: ", row[0])
+            print("Vehicle ID: ", row[1])
+            print("Vehicle IP: ", row[2])
+            print("Vehicle Port: ", row[3])
             print("-----------------------------------------")
         
         vehicle_id_input = int(input("Enter the vehicle ID to connect with: "))
@@ -87,7 +87,7 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return INT_NONE, STR_NONE, INT_NONE, ERROR
+        return INT_NONE, STR_NONE, STR_NONE, INT_NONE, ERROR
 
 # Requests the clients update version from the client
 def get_client_update_version(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[str, str, int]:
@@ -124,7 +124,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         # Gets the latest update file from the database
         latest_update_version = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicles_entry_id = ?;", (vehicle_entry_id,))).fetchone()[0]
         # Updates poll time and version number
-        client_update_id = cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (client_update_version,)).fetchone()
+        client_update_id = cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (client_update_version,)).fetchone()[0]
         cursor.execute("UPDATE vehicles SET update_id = ?, last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (client_update_id, vehicle_entry_id)) # Uses the current timestamp to determine when version number was retrieved
         db_connection.commit()
         db_connection.close()
@@ -138,7 +138,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
 
-        return STR_NONE, client_update_version, SUCCESS
+        return identifier, client_update_version, SUCCESS
     
     except Exception as e:
         print(f"An error occurred: {e}")

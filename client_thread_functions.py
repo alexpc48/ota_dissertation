@@ -135,7 +135,7 @@ def listen(selector: selectors.SelectSelector) -> None:
         os._exit(LISTENING_ERROR)
 
 # Thread for servicing active connections
-def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict,) -> int:
+def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         while True:
             # Get list of events from the selector
@@ -149,11 +149,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
                 connection_socket = key.fileobj
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
-                
+
                 # Read events
-                if mask & selectors.EVENT_READ:
-                    print(f"Receiving data from {remote_host}:{remote_port} in {BYTES_TO_READ} byte chunks...")
-                    
+                if mask & selectors.EVENT_READ:                        
                     key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
@@ -238,7 +236,6 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Checks if security is turned on for the purposes of demonstration
                         # Would not be used in real application
                         encryption_key = BYTES_NONE
-                        print(SECURITY_MODE)
                         if SECURITY_MODE == 1:
                             db_connection = sqlite3.connect(database)
                             cursor = db_connection.cursor()

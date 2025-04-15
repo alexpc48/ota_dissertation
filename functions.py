@@ -9,13 +9,14 @@ import struct
 import types
 import errno
 import time
+import ssl
 import constants
 
 from constants import *
 from cryptographic_functions import *
 
 # Closes connection with the socket and selector specified
-def close_connection(connection_socket: socket.socket, selector: selectors.SelectSelector) -> int:
+def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.SelectSelector) -> int:
     try:
         try:
             selector.get_key(connection_socket)  # This will raise KeyError if not registered
@@ -25,6 +26,21 @@ def close_connection(connection_socket: socket.socket, selector: selectors.Selec
             print("Socket is not registered with selector.")
 
         if connection_socket.fileno() != -1:
+            # Waits until client sends its close_notify
+            # FIXME: Implement default timeout
+            while True:
+                try:
+                    print("Unwrapping TLS ...")
+                    connection_socket = connection_socket.unwrap() # Removes TLS
+                    break
+                except ssl.SSLWantReadError:
+                    continue
+                except ssl.SSLWantWriteError:
+                    continue
+                except Exception as e:
+                    print(f"An error occurred during unwrap: {e}")
+                    break
+            print("Closing socket ...")
             connection_socket.close()
             print("Socket closed.")
         else:
@@ -67,16 +83,78 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
         print("Accepting new connection ...")
+
+        # TLS implementation
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
+        context.options |= ssl.OP_NO_SSLv2
+        context.options |= ssl.OP_NO_SSLv3
+        context.options |= ssl.OP_NO_TLSv1
+        context.options |= ssl.OP_NO_TLSv1_1
+        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        connection_certificate = "server_certificate.pem"
+        connection_private_key = "server_private_key.pem"
+        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
+        root_ca = "root_ca.pem"
+        context.load_verify_locations(cafile=root_ca)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False # No hostnames in use, but real implementation would
+
         connection_socket, address = socket.accept()
         print(f"Accepted connection from {address[0]}:{address[1]} ...")
         connection_socket.setblocking(False)
 
+        # TLS implementation
+        connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
+
         # Register the connection with the selector
-        data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE)
+        data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
         # print("[ACK]")
+
+        print("Waiting for TLS handshake ...")
+        # Waits for TLS handshake confirmation to be sent
+        while True:
+            # Get list of events from the selector
+            timeout_interval = random.randint(1, 10)
+            events = selector.select(timeout=timeout_interval)
+            for key, mask in events:
+                if key.data == "listening_socket":
+                    continue
+
+                connection_socket = key.fileobj
+
+                if data.outb != HANDSHAKE_COMPLETE:
+                    # Read events
+                    if mask & selectors.EVENT_READ:                        
+                        try:
+                            data.inb = connection_socket.recv(STATUS_CODE_SIZE)
+                            if data.inb == HANDSHAKE_COMPLETE:
+                                print("TLS handshake complete.")
+                                data.outb = HANDSHAKE_FINISHED
+                            data.handshake_complete = True
+                        except ssl.SSLWantReadError:
+                            continue
+                        except ssl.SSLWantWriteError:
+                            continue
+                if mask & selectors.EVENT_WRITE:
+                    if data.outb:
+                        while data.outb:
+                            sent = connection_socket.send(data.outb)
+                            data.outb = data.outb[sent:]
+                        data.outb = BYTES_NONE
+                        print("Data sent.")
+                        break
+
+            if data.handshake_complete == True:
+                data.inb = BYTES_NONE
+                data.outb = BYTES_NONE
+                print(f"data.inb: {data.inb}")
+                print(f"data.outb: {data.outb}")
+                break
+
+        print("TLS handshake successful.")
         return SUCCESS
     
     except Exception as e:
@@ -86,15 +164,31 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     
 # Creates a connection to an endpoint
 # TODO: Only connect to registered endpoints
-def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, socket.socket, int]:
+def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
 
+       
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
 
+        # TLS implementation
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
+        context.options |= ssl.OP_NO_SSLv2
+        context.options |= ssl.OP_NO_SSLv3
+        context.options |= ssl.OP_NO_TLSv1
+        context.options |= ssl.OP_NO_TLSv1_1
+        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        connection_certificate = "client_certificate.pem"
+        connection_private_key = "client_private_key.pem"
+        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
+        root_ca = "root_ca.pem"
+        context.load_verify_locations(cafile=root_ca)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False
+
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE)
+        data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
         
         # Waits for the connection to complete in a non-blocking way, but blocks all other operations
         connection_attempts = 0
@@ -127,9 +221,72 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print("Please check the host and port details.")
                 return None, None, CONNECTION_INITIATE_ERROR
 
+        # TLS implementation
+        connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False) # Wraps the socket with TLS
+        while True:
+            try:
+                # print("Performing TLS handshake ...")
+                connection_socket.do_handshake()
+                data.outb = HANDSHAKE_COMPLETE
+                break
+            except ssl.SSLWantReadError:
+                # print("SSLWantReadError during handshake.")
+                continue
+            except ssl.SSLWantWriteError:
+                print("SSLWantWriteError during handshake.")
+            except ssl.SSLError as e:
+                print(f"SSLError during handshake: {e}")
+                return False
+            except Exception as e:
+                print(f"An unexpected error occurred during handshake: {e}")
+                return False
+            
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
         print("Socket registered.")
+
+        print("Waiting for TLS handshake ...")
+        # Waits for TLS handshake confirmation to be sent
+        while True:
+            # Get list of events from the selector
+            timeout_interval = random.randint(1, 10)
+            events = selector.select(timeout=timeout_interval)
+            for key, mask in events:
+                if key.data == "listening_socket":
+                    continue
+
+                connection_socket = key.fileobj
+
+                if data.outb != HANDSHAKE_COMPLETE:
+                    # Read events
+                    if mask & selectors.EVENT_READ:                        
+                        try:
+                            data.inb = connection_socket.recv(STATUS_CODE_SIZE)
+                            if data.inb == HANDSHAKE_COMPLETE:
+                                print("TLS handshake complete.")
+                                data.outb = HANDSHAKE_FINISHED
+                            data.handshake_complete = True
+                        except ssl.SSLWantReadError:
+                            continue
+                        except ssl.SSLWantWriteError:
+                            continue
+                if mask & selectors.EVENT_WRITE:
+                    if data.outb:
+                        while data.outb:
+                            sent = connection_socket.send(data.outb)
+                            data.outb = data.outb[sent:]
+                        data.outb = BYTES_NONE
+                        print("Data sent.")
+                        break
+
+            if data.handshake_complete == True:
+                data.inb = BYTES_NONE
+                data.outb = BYTES_NONE
+                print(f"data.inb: {data.inb}")
+                print(f"data.outb: {data.outb}")
+                break
+
+        print("TLS handshake successful.")
 
         return selector, connection_socket, SUCCESS
     
@@ -138,19 +295,36 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
 
+import ssl
+
+# Connection wrapper
+def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> bytes:
+    while True:
+        try:
+            received_bytes = connection_socket.recv(bytes_to_read)
+            return received_bytes
+        except ssl.SSLWantReadError:
+            # print("SSLWantReadError: Waiting for more data to be readable...")
+            continue
+    
+        except ssl.SSLWantWriteError:
+            # print("SSLWantWriteError: Waiting until socket is writable...")
+            continue
+
+
 # Receives the payload from the socket
-def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
+def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
         file_name = BYTES_NONE # Initialise variable
 
         # Read the packet header
         # Receive packed data (integers)
-        print("Receiving header ...")
-        header = connection_socket.recv(PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header
+        header = connection_receive(connection_socket, PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header
         if header == BYTES_NONE: # Closes connection if no data is received from the remote connection
             print("No data received.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
         print("Header received.")
+        print(f"Header: {header}")
 
         # Continue if data is received
         # Data arrives as header -> nonce -> tag -> identifier -> payload
@@ -158,14 +332,14 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
         if header:
             # Receive the nonce and tag
             print("Receiving nonce ...")
-            nonce = connection_socket.recv(NONCE_LENGTH)
+            nonce = connection_receive(connection_socket, NONCE_LENGTH)
             print(f"Nonce: {nonce}")
             print("Receiving tag ...")
-            tag = connection_socket.recv(TAG_LENGTH)
+            tag = connection_receive(connection_socket, TAG_LENGTH)
             print(f"Tag: {tag}")
 
             print("Receiving identifier ...")
-            identifier = (connection_socket.recv(IDENTIFIER_LENGTH)).decode()
+            identifier = (connection_receive(connection_socket, IDENTIFIER_LENGTH)).decode()
             print(f"Identifier: {identifier}")
 
             # Uses listening port to determine which database to use
@@ -206,7 +380,7 @@ def receive_payload(connection_socket: socket.socket) -> typing.Tuple[bytes, byt
             payload = BYTES_NONE # Initialise variable
             while len(payload) < payload_length:
                 try:
-                    chunk = connection_socket.recv(BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                    chunk = connection_receive(connection_socket, BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
                 except BlockingIOError as e:
                     print(f"BlockingIOError: {e}")
                     if e.errno == errno.EAGAIN:
@@ -333,6 +507,10 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
+        print(f"Header: {header}")
+        print(f"Nonce: {nonce}")
+        print(f"Tag: {tag}")
+        print(f"Identifier: {identifier}")
 
         return data_to_send, SUCCESS
 

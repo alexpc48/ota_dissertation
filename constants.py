@@ -72,3 +72,6 @@ SECURITY_MODE = 1 # 1 = Secure, 0 = Insecure - Used for demonstration purposes
 HASH_SIZE = 64 # SHA256 hash size in bytes
 ED25591_SIGNATURE_SIZE = 64
 SIGNATURE_ALGORITHM = 'ed25519' # ed25519, rsa, ecdsa
+HANDSHAKE_COMPLETE = b'10017'
+STATUS_CODE_SIZE = 5
+HANDSHAKE_FINISHED = b'10018'

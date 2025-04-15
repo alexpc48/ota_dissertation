@@ -12,3 +12,8 @@ https://stackoverflow.com/questions/1220751/how-to-choose-an-aes-encryption-mode
 https://onboardbase.com/blog/aes-encryption-decryption/
 https://docs.python.org/3/library/hashlib.html
 https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ec/
+https://docs.python.org/3/library/ssl.html
+https://stackoverflow.com/questions/63922697/convert-bytes-to-a-file-object-in-python
+https://developer.nvidia.com/docs/drive/drive-os/archives/6.0.4/linux/sdk/common/topics/security_concepts/GeneratingaPKCKeyPairUsingOpenSSL27.html
+https://knowledge.digicert.com/general-information/openssl-quick-reference-guide
+https://gemini.google.com/app/7825095754043217
