@@ -153,7 +153,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
                 print(f"data.inb: {data.inb}")
                 print(f"data.outb: {data.outb}")
                 break
-        print(type(connection_socket))
+
         print("TLS handshake successful.")
         return SUCCESS
     
