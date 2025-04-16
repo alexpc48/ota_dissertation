@@ -17,3 +17,4 @@ https://stackoverflow.com/questions/63922697/convert-bytes-to-a-file-object-in-p
 https://developer.nvidia.com/docs/drive/drive-os/archives/6.0.4/linux/sdk/common/topics/security_concepts/GeneratingaPKCKeyPairUsingOpenSSL27.html
 https://knowledge.digicert.com/general-information/openssl-quick-reference-guide
 https://gemini.google.com/app/7825095754043217
+https://stackoverflow.com/questions/938733/total-memory-used-by-python-process

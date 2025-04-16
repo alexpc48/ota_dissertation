@@ -3,6 +3,7 @@
 
 import sqlite3
 import typing
+import os
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from Crypto.Random import get_random_bytes
 
@@ -29,6 +30,10 @@ if __name__=='__main__':
     windows_ip, windows_port = '127.0.0.1', 50150
     linux_ip, linux_port = '127.0.0.1', 50069
 
+    # print("Removing old diagnostics file ...")
+    # if os.path.exists('*diagnostics.txt'):
+    #     os.remove('*diagnostics.txt')
+    # print("Old diagnostics file removed.")
 
     print("Preparing example data ...")
     # Loads update files

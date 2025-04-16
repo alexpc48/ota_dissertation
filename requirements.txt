@@ -6,6 +6,7 @@ filelock==3.18.0
 packaging==24.2
 pefile==2023.2.7
 platformdirs==4.3.7
+psutil==7.0.0
 pycparser==2.22
 pycryptodome==3.22.0
 pyinstaller==6.12.0

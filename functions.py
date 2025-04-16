@@ -8,9 +8,12 @@ import selectors
 import struct
 import types
 import errno
+import tracemalloc
 import time
 import ssl
 import constants
+import datetime
+import psutil
 
 from constants import *
 from cryptographic_functions import *
@@ -387,6 +390,61 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
     print("Timeout: No data received within 10 seconds.")
     return BYTES_NONE, TIMEOUT_ERROR
 
+# ChatGPT used
+def measure_operation(process, func, *args, **kwargs):
+    """Profile a specific function call and return result + diagnostics."""
+    tracemalloc.start()
+    snapshot_start = tracemalloc.take_snapshot()
+
+    cpu_times_start = process.cpu_times()
+    _ = process.cpu_percent(interval=None)
+    mem_info_start = process.memory_full_info()
+
+    start_time = time.perf_counter()
+    result = func(*args, **kwargs)
+    elapsed_time = time.perf_counter() - start_time
+
+    cpu_times_end = process.cpu_times()
+    mem_info_end = process.memory_full_info()
+    cpu_percent = process.cpu_percent(interval=None)
+    snapshot_end = tracemalloc.take_snapshot()
+
+    # CPU and memory metrics
+    cpu_user = cpu_times_end.user - cpu_times_start.user
+    cpu_sys = cpu_times_end.system - cpu_times_start.system
+    cpu_total = cpu_user + cpu_sys
+    mem_rss = mem_info_end.rss - mem_info_start.rss
+    mem_uss = getattr(mem_info_end, 'uss', 0) - getattr(mem_info_start, 'uss', 0)
+    cpu_equiv = cpu_total / elapsed_time if elapsed_time > 0 else 0
+
+    py_alloc = sum(stat.size_diff for stat in snapshot_end.compare_to(snapshot_start, 'lineno'))
+    tracemalloc.stop()
+
+    return result, {
+        "time": elapsed_time,
+        "cpu_user": cpu_user,
+        "cpu_sys": cpu_sys,
+        "cpu_total": cpu_total,
+        "cpu_percent": cpu_percent,
+        "cpu_equiv": cpu_equiv,
+        "mem_rss": mem_rss,
+        "mem_uss": mem_uss,
+        "py_mem": py_alloc
+    }
+
+def log_section(name, stats, f):
+    if not stats: return
+    f.write(f"{name}:\n")
+    f.write(f"  Time:                        {stats['time']:.9f} sec\n")
+    f.write(f"  CPU time (user):             {stats['cpu_user']:.9f} sec\n")
+    f.write(f"  CPU time (system):           {stats['cpu_sys']:.9f} sec\n")
+    f.write(f"  Total CPU time:              {stats['cpu_total']:.9f} sec\n")
+    f.write(f"  Effective CPU cores used:    {stats['cpu_equiv']:.2f}x\n")
+    f.write(f"  CPU usage during operation:  ~{stats['cpu_percent']:.2f}%\n")
+    f.write(f"  Memory change (RSS):         {stats['mem_rss']} bytes\n")
+    f.write(f"  Memory change (USS):         {stats['mem_uss']} bytes\n")
+    f.write(f"  Python memory allocated:     {stats['py_mem']} bytes\n\n")
+
 # Receives the payload from the socket
 def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
@@ -439,14 +497,17 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 database = os.getenv("SERVER_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ? LIMIT 1" # (identifier,)
                 sign_query = f"SELECT {SIGNATURE_ALGORITHM}_public_key FROM vehicles WHERE vehicle_id = ? LIMIT 1" # (identifier,)
+                diagnostics_file = "server_diagnostics.txt"
             elif port == WINDOWS_PORT:
                 database = os.getenv("WINDOWS_CLIENT_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
                 sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
+                diagnostics_file = "windows_client_diagnostics.txt"
             elif port == LINUX_PORT:
                 database = os.getenv("LINUX_CLIENT_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
                 sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
+                diagnostics_file = "linux_client_diagnostics.txt"
 
             # Retrieve symmetric encrypion key
             print(f"Retrieving encryption key from {database} ...")
@@ -485,26 +546,20 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             print("Payload received.")
             
             print("Timing security checks ...")
-            payload_decryption_time, hash_verification_time, signature_verification_time = 0, 0, 0
-            start_time = time.perf_counter()            
-            payload, ret_val = payload_decryption(payload, nonce, tag, encryption_key) # Decrypt the payload
+            process = psutil.Process(os.getpid())
+            (payload, ret_val), decrypt_stats = measure_operation(process, payload_decryption, payload, nonce, tag, encryption_key)
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
-            payload_decryption_time = time.perf_counter() - start_time
-            print(f"Payload decrypted in {payload_decryption_time:.9f} seconds.")
-            
-            file_name = payload[:file_name_length]
-            print(f"File name: {file_name}")
 
-            # Verify the hash and signature of an update file only
+            file_name = payload[:file_name_length]
+
+            hash_stats = {}
+            sign_stats = {}
             if data_subtype == UPDATE_FILE:
-                start_time = time.perf_counter()
-                data_inb, ret_val = verify_hash(payload, file_name_length, payload_length)
+                (data_inb, ret_val), hash_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
                     print("Hash is valid.")
-                    hash_verification_time = time.perf_counter() - start_time
-                    print(f"Hash verified in {hash_verification_time:.9f} seconds.")
                 elif INVALID_PAYLOAD_ERROR:
                     print("Hash is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -515,7 +570,6 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 # Retrieve the signature public key from the database
                 # Server filters to the clients ID
                 # Clients only have the servers public key so no need to filter
-                # print(f"Retrieving signature public key from {database} ...")
                 db_connection = sqlite3.connect(database)
                 cursor = db_connection.cursor()
                 if port == SERVER_PORT:
@@ -523,29 +577,39 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 else:
                     public_key = (cursor.execute(sign_query)).fetchone()[0]
                 db_connection.close()
-                # print("Retrieved signature public key.")
 
-                start_time = time.perf_counter()
-                ret_val = verify_signature(public_key, payload, payload_length)
+                ret_val, sign_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
                 if ret_val == SUCCESS:
                     print("Signature is valid.")
-                    signature_verification_time = time.perf_counter() - start_time
-                    print(f"Signature verified in {signature_verification_time:.9f} seconds.")
                 elif SIGNATURE_INVALID_ERROR:
                     print("Signature is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
                 else:
                     print("Error during signature verification.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-
-            # If the payload is not an update file, just extract the data     
             else:
                 data_inb = payload[file_name_length:payload_length]
-                # print(f"Payload: {data_inb}")
 
-            print(f"Security checks completed in {payload_decryption_time + hash_verification_time + signature_verification_time:.9} seconds.")
+            total_time = decrypt_stats['time'] + hash_stats.get('time', 0) + sign_stats.get('time', 0)
+
+            # Use of ChatGPT for creating logging functionality
+            with open(diagnostics_file, 'a') as f:
+                current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"----- Received payload diagnostics Log -----\n")
+                f.write(f"Date and Time: {current_time}\n")
+                f.write(f"--------------------------------------------\n")
+                f.write(f"------ Security Operation Diagnostics ------\n")
+                log_section("Decryption", decrypt_stats, f)
+                log_section("Hash Verification", hash_stats, f)
+                log_section("Signature Verification", sign_stats, f)
+                f.write(f"Total time for security operations: {total_time:.9f} sec\n")
+                f.write(f"--------------------------------------------\n")
+                f.write(f"---------- End of diagnostics Log ----------\n\n\n\n")
+
+            print(f"Security checks completed in {total_time:.9f} seconds.")
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
+
 
     except Exception as e:
         print(f"An error occurred: {e}")

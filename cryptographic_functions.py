@@ -19,7 +19,6 @@ from constants import *
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
         print("Encrypting payload ...")
-        print(SECURITY_MODE)
         if SECURITY_MODE == 0: # Testing purpose, no encryption
             # Generate random nonce and tag as fillers (not secure)
             nonce = random.randbytes(NONCE_LENGTH)
