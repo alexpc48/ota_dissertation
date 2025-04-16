@@ -27,20 +27,27 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
 
         if connection_socket.fileno() != -1:
             # Waits until client sends its close_notify
-            # FIXME: Implement default timeout
-            while True:
+            tls_unwrap = False
+            start_time = time.time()
+            while time.time() - start_time < 5:  # Wait 5 seconds until timing out
                 try:
                     print("Unwrapping TLS ...")
                     connection_socket = connection_socket.unwrap() # Removes TLS
+                    tls_unwrap = True
+                    print("TLS unwrapped.")
                     break
                 except ssl.SSLWantReadError:
                     continue
                 except ssl.SSLWantWriteError:
                     continue
                 except Exception as e:
-                    print(f"An error occurred during unwrap: {e}")
+                    print(f"An error occurred during socket unwrap: {e}")
                     break
-            print("Closing socket ...")
+            if tls_unwrap == False:
+                print("TLS unwrap timed out.")
+                print("Abruptly closing socket ...")
+            else:
+                print("Closing socket ...")
             connection_socket.close()
             print("Socket closed.")
         else:
