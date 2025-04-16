@@ -4,6 +4,7 @@
 import sqlite3
 import typing
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from Crypto.Random import get_random_bytes
 
 from get_os_type import *
 
@@ -30,7 +31,7 @@ if __name__=='__main__':
 
 
     print("Preparing example data ...")
-    # Loads update files and AES keys
+    # Loads update files
     # Used to accomodate both Windows and Linux file paths
     os_type = get_os_type_func()
     if os_type == "Windows":
@@ -40,14 +41,6 @@ if __name__=='__main__':
         file4 = 'updates\\popeye.png'
         file5 = 'updates\\bugs_bunny.jpg'
         file6 = 'updates\\daffy_duck.png'
-        with open("helpers\\aes_128_linux_client.key", "rb") as f:
-            aes_128_linux_client = f.read()
-        with open("helpers\\aes_256_linux_client.key", "rb") as f:
-            aes_256_linux_client = f.read()
-        with open("helpers\\aes_128_windows_client.key", "rb") as f:
-            aes_128_windows_client = f.read()
-        with open("helpers\\aes_256_windows_client.key", "rb") as f:
-            aes_256_windows_client = f.read()
     elif os_type == "Linux":
         file1 = 'updates/snoopy.png'
         file2 = 'updates/dban.iso'
@@ -55,15 +48,15 @@ if __name__=='__main__':
         file4 = 'updates/popeye.png'
         file5 = 'updates/bugs_bunny.jpg'
         file6 = 'updates/daffy_duck.png'
-        with open("helpers/aes_128_linux_client.key", "rb") as f:
-            aes_128_linux_client = f.read()
-        with open("helpers/aes_256_linux_client.key", "rb") as f:
-            aes_256_linux_client = f.read()
-        with open("helpers/aes_128_windows_client.key", "rb") as f:
-            aes_128_windows_client = f.read()
-        with open("helpers/aes_256_windows_client.key", "rb") as f:
-            aes_256_windows_client = f.read()
+    
+    # Creates cryptographic material
+    # AES keys
+    aes_128_windows_client = get_random_bytes(16)
+    aes_256_windows_client = get_random_bytes(32)
+    aes_128_linux_client = get_random_bytes(16)
+    aes_256_linux_client = get_random_bytes(32)
 
+    # Ed25519 keys
     # Generates public and private keys for the server and clients
     server_eddsa_private_key = Ed25519PrivateKey.generate()
     server_eddsa_public_key = server_eddsa_private_key.public_key()
@@ -71,7 +64,6 @@ if __name__=='__main__':
     windows_eddsa_public_key = windows_eddsa_private_key.public_key()
     linux_eddsa_private_key = Ed25519PrivateKey.generate()
     linux_eddsa_public_key = linux_eddsa_private_key.public_key()
-    
     # Converts keys to bytes for storage in the database
     server_eddsa_private_key = server_eddsa_private_key.private_bytes_raw()
     server_eddsa_public_key = server_eddsa_public_key.public_bytes_raw()
@@ -79,6 +71,29 @@ if __name__=='__main__':
     windows_eddsa_public_key = windows_eddsa_public_key.public_bytes_raw()
     linux_eddsa_private_key = linux_eddsa_private_key.private_bytes_raw()
     linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
+
+    # Certificates
+    # Certificates are pre-made and stored as files
+    # In reality would be generated and signed by a CA
+    # See certificate_openssl_commands.txt for commands to generate the Ed25119 certificates
+    if os_type == "Windows":
+        root_ca, _ = get_update_file("cryptographic_material\\root_ca.pem")
+        server_private_key, _ = get_update_file("cryptographic_material\\server_private_key.pem")
+        server_certificate, _ = get_update_file("cryptographic_material\\server_certificate.pem")
+        windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key.pem")
+        windows_client_certificate, _ = get_update_file("cryptographic_material\\windows_client_certificate.pem")
+        linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key.pem")
+        linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate.pem")
+
+    elif os_type == "Linux":
+        root_ca, _ = get_update_file("cryptographic_material/root_ca.pem")
+        server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
+        server_certificate, _ = get_update_file("cryptographic_material/server_certificate.pem")
+        windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key.pem")
+        windows_client_certificate, _ = get_update_file("cryptographic_material/windows_client_certificate.pem")
+        linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
+        linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
+
 
     print("Example data prepared.")
 
@@ -121,7 +136,10 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS cryptographic_data (
                     cryptographic_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     ed25519_private_key BLOB,
-                    ed25519_public_key BLOB
+                    ed25519_public_key BLOB,
+                    server_private_key BLOB,
+                    server_certificate BLOB,
+                    root_ca BLOB
                     )''')
     
     print("Tables created.")
@@ -145,9 +163,9 @@ if __name__=='__main__':
                     VALUES (?, ?, ?)''',
                     (server_ip, server_port, '5B8DECB9-2A5B-48FA-966B-673B9A731C1F'))
     
-    cursor.execute('''INSERT INTO cryptographic_data (ed25519_private_key, ed25519_public_key)
-                    VALUES (?, ?)''',
-                    (server_eddsa_private_key, server_eddsa_public_key))
+    cursor.execute('''INSERT INTO cryptographic_data (ed25519_private_key, ed25519_public_key, server_private_key, server_certificate, root_ca)
+                    VALUES (?, ?, ?, ?, ?)''',
+                    (server_eddsa_private_key, server_eddsa_public_key, server_private_key, server_certificate, root_ca))
     
     # Example updates
     file_data, _ = get_update_file(file1)
@@ -210,7 +228,10 @@ if __name__=='__main__':
                     aes_256 BLOB,
                     ed25519_private_key BLOB,
                     ed25519_public_key BLOB,
-                    server_ed25519_public_key BLOB
+                    server_ed25519_public_key BLOB,
+                    windows_client_private_key BLOB,
+                    windows_client_certificate BLOB,
+                    root_ca BLOB
                     )''')
     
     print("Tables created.")
@@ -225,9 +246,9 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.2.w', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key)
-                    VALUES (?, ?, ?, ?, ?)''',
-                    (aes_128_windows_client, aes_256_windows_client, windows_eddsa_private_key, windows_eddsa_public_key, server_eddsa_public_key))
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key, windows_client_private_key, windows_client_certificate, root_ca)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (aes_128_windows_client, aes_256_windows_client, windows_eddsa_private_key, windows_eddsa_public_key, server_eddsa_public_key, windows_client_private_key, windows_client_certificate, root_ca))
     
     print("Data added to the Windows client database.")
 
@@ -268,7 +289,10 @@ if __name__=='__main__':
                     aes_256 BLOB,
                     ed25519_private_key BLOB,
                     ed25519_public_key BLOB,
-                    server_ed25519_public_key BLOB
+                    server_ed25519_public_key BLOB,
+                    linux_client_private_key BLOB,
+                    linux_client_certificate BLOB,
+                    root_ca BLOB
                     )''')
     
     print("Tables created.")
@@ -283,9 +307,9 @@ if __name__=='__main__':
                     VALUES (?, ?)''',
                     ('1.0.3.png', False))
     
-    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key)
-                    VALUES (?, ?, ?, ?, ?)''',
-                    (aes_128_linux_client, aes_256_linux_client, linux_eddsa_private_key, linux_eddsa_public_key, server_eddsa_public_key))
+    cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key, linux_client_private_key, linux_client_certificate, root_ca)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (aes_128_linux_client, aes_256_linux_client, linux_eddsa_private_key, linux_eddsa_public_key, server_eddsa_public_key, linux_client_private_key, linux_client_certificate, root_ca))
     
     print("Data added to the Linux client database.")
 

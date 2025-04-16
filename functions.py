@@ -124,11 +124,42 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
 
         # TLS implementation
         context, _ = create_context('server')
-        connection_certificate = "server_certificate.pem"
-        connection_private_key = "server_private_key.pem"
-        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
-        root_ca = "root_ca.pem"
-        context.load_verify_locations(cafile=root_ca)
+        _, port = LISTENING_SOCKET_INFO
+        if port == SERVER_PORT:
+            database = os.getenv("SERVER_DATABASE")
+            query = "SELECT server_private_key, server_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif port == WINDOWS_PORT:
+            database = os.getenv("WINDOWS_CLIENT_DATABASE")
+            query = "SELECT windows_client_private_key, windows_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif port == LINUX_PORT:
+            database = os.getenv("LINUX_CLIENT_DATABASE")
+            query = "SELECT linux_client_private_key, linux_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        connection_private_key, connection_certificate, root_ca = (cursor.execute(query)).fetchone()
+        connection_private_key = connection_private_key.decode()
+        connection_certificate = connection_certificate.decode()
+        root_ca = root_ca.decode()
+        print(f"Connection certificate: {connection_certificate}")
+        print(f"Connection private key: {connection_private_key}")
+        print(f"Root CA: {root_ca}")
+        db_connection.close()
+
+        # Work around for having hardcoded certificate paths
+        # Allows server and clients to use their certificates
+        with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:
+            connection_certificate_temp.write(connection_certificate)
+            connection_private_key_temp.write(connection_private_key)
+            root_ca_temp.write(root_ca)
+        context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
+        context.load_verify_locations(cafile="root_ca.pem")
+        print("Certificates loaded.")
+        print("Removing temporary files ...")
+        # os.remove("connection_certificate.pem")
+        # os.remove("connection_private_key.pem")
+        # os.remove("root_ca.pem")
+        print("Temporary files removed.")
 
         connection_socket, address = socket.accept()
         print(f"Accepted connection from {address[0]}:{address[1]} ...")
@@ -197,14 +228,45 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
 
         # TLS implementation
         context, _ = create_context('client')
-        connection_certificate = "client_certificate.pem"
-        connection_private_key = "client_private_key.pem"
-        context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
-        root_ca = "root_ca.pem"
-        context.load_verify_locations(cafile=root_ca)
+        _, check_port = LISTENING_SOCKET_INFO
+        if check_port == SERVER_PORT:
+            database = os.getenv("SERVER_DATABASE")
+            query = "SELECT server_private_key, server_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif check_port == WINDOWS_PORT:
+            database = os.getenv("WINDOWS_CLIENT_DATABASE")
+            query = "SELECT windows_client_private_key, windows_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif check_port == LINUX_PORT:
+            database = os.getenv("LINUX_CLIENT_DATABASE")
+            query = "SELECT linux_client_private_key, linux_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        connection_private_key, connection_certificate, root_ca = (cursor.execute(query)).fetchone()
+        connection_private_key = connection_private_key.decode()
+        connection_certificate = connection_certificate.decode()
+        root_ca = root_ca.decode()
+        # print(f"Connection certificate: {connection_certificate}")
+        # print(f"Connection private key: {connection_private_key}")
+        # print(f"Root CA: {root_ca}")
+        db_connection.close()
 
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
+
+        # Work around for having hardcoded certificate paths
+        # Allows server and clients to use their certificates
+        with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:
+            connection_certificate_temp.write(connection_certificate)
+            connection_private_key_temp.write(connection_private_key)
+            root_ca_temp.write(root_ca)
+        context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
+        context.load_verify_locations(cafile="root_ca.pem")
+        print("Certificates loaded.")
+        print("Removing temporary files ...")
+        os.remove("connection_certificate.pem")
+        os.remove("connection_private_key.pem")
+        os.remove("root_ca.pem")
+        print("Temporary files removed.")
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
