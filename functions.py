@@ -141,9 +141,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_private_key = connection_private_key.decode()
         connection_certificate = connection_certificate.decode()
         root_ca = root_ca.decode()
-        print(f"Connection certificate: {connection_certificate}")
-        print(f"Connection private key: {connection_private_key}")
-        print(f"Root CA: {root_ca}")
         db_connection.close()
 
         # Work around for having hardcoded certificate paths
@@ -487,19 +484,27 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 payload += chunk
             print("Payload received.")
             
+            print("Timing security checks ...")
+            payload_decryption_time, hash_verification_time, signature_verification_time = 0, 0, 0
+            start_time = time.perf_counter()            
             payload, ret_val = payload_decryption(payload, nonce, tag, encryption_key) # Decrypt the payload
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
+            payload_decryption_time = time.perf_counter() - start_time
+            print(f"Payload decrypted in {payload_decryption_time:.9f} seconds.")
             
             file_name = payload[:file_name_length]
             print(f"File name: {file_name}")
 
             # Verify the hash and signature of an update file only
-            if data_subtype == UPDATE_FILE:                
+            if data_subtype == UPDATE_FILE:
+                start_time = time.perf_counter()
                 data_inb, ret_val = verify_hash(payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
                     print("Hash is valid.")
+                    hash_verification_time = time.perf_counter() - start_time
+                    print(f"Hash verified in {hash_verification_time:.9f} seconds.")
                 elif INVALID_PAYLOAD_ERROR:
                     print("Hash is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -520,9 +525,12 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 db_connection.close()
                 # print("Retrieved signature public key.")
 
+                start_time = time.perf_counter()
                 ret_val = verify_signature(public_key, payload, payload_length)
                 if ret_val == SUCCESS:
                     print("Signature is valid.")
+                    signature_verification_time = time.perf_counter() - start_time
+                    print(f"Signature verified in {signature_verification_time:.9f} seconds.")
                 elif SIGNATURE_INVALID_ERROR:
                     print("Signature is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -534,6 +542,8 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 data_inb = payload[file_name_length:payload_length]
                 # print(f"Payload: {data_inb}")
+
+            print(f"Security checks completed in {payload_decryption_time + hash_verification_time + signature_verification_time:.9} seconds.")
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
