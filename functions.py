@@ -29,7 +29,7 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
             # Waits until client sends its close_notify
             tls_unwrap = False
             start_time = time.time()
-            while time.time() - start_time < 5:  # Wait 5 seconds until timing out
+            while time.time() - start_time < 10:  # Wait 10 seconds until timing out
                 try:
                     print("Unwrapping TLS ...")
                     connection_socket = connection_socket.unwrap() # Removes TLS
@@ -85,32 +85,56 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         _ = close_connection(listening_socket, selector)
         return LISTENING_SOCKET_CREATION_ERROR
     
+# Wrapper to create TLS contexts
+def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
+    try:
+        if mode == 'server':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
+            # Disable older protocols for security
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            # Set ciphers for security
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False # No hostnames in use, but real implementation would use hostnames
+            return context, SUCCESS
+        elif mode == 'client':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False
+            return context, SUCCESS
+        else:
+            print("Invalid mode. Use 'server' or 'client'.")
+            return None, ERROR
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, ERROR
+
 # Accepts new connections
-# TODO: Only accept registerd connection endpoints
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
         print("Accepting new connection ...")
 
         # TLS implementation
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
-        context.options |= ssl.OP_NO_SSLv2
-        context.options |= ssl.OP_NO_SSLv3
-        context.options |= ssl.OP_NO_TLSv1
-        context.options |= ssl.OP_NO_TLSv1_1
-        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        context, _ = create_context('server')
         connection_certificate = "server_certificate.pem"
         connection_private_key = "server_private_key.pem"
         context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
         root_ca = "root_ca.pem"
         context.load_verify_locations(cafile=root_ca)
-        context.verify_mode = ssl.CERT_REQUIRED
-        context.check_hostname = False # No hostnames in use, but real implementation would
 
         connection_socket, address = socket.accept()
         print(f"Accepted connection from {address[0]}:{address[1]} ...")
         connection_socket.setblocking(False)
 
-        # TLS implementation
+        # Wrap the socket with TLS
         connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
 
         # Register the connection with the selector
@@ -118,7 +142,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         events = selectors.EVENT_READ | selectors.EVENT_WRITE # Allow socket to read and write
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
-        # print("[ACK]")
 
         print("Waiting for TLS handshake ...")
         # Waits for TLS handshake confirmation to be sent
@@ -157,8 +180,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
             if data.handshake_complete == True:
                 data.inb = BYTES_NONE
                 data.outb = BYTES_NONE
-                print(f"data.inb: {data.inb}")
-                print(f"data.outb: {data.outb}")
                 break
 
         print("TLS handshake successful.")
@@ -170,29 +191,20 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         return CONNECTION_ACCEPT_ERROR
     
 # Creates a connection to an endpoint
-# TODO: Only connect to registered endpoints
 def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
         print(f"Initiating connection to {host}:{port} ...")
 
-       
-        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection_socket.setblocking(False)
-
         # TLS implementation
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
-        context.options |= ssl.OP_NO_SSLv2
-        context.options |= ssl.OP_NO_SSLv3
-        context.options |= ssl.OP_NO_TLSv1
-        context.options |= ssl.OP_NO_TLSv1_1
-        context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+        context, _ = create_context('client')
         connection_certificate = "client_certificate.pem"
         connection_private_key = "client_private_key.pem"
         context.load_cert_chain(certfile=connection_certificate, keyfile=connection_private_key)
         root_ca = "root_ca.pem"
         context.load_verify_locations(cafile=root_ca)
-        context.verify_mode = ssl.CERT_REQUIRED
-        context.check_hostname = False
+
+        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connection_socket.setblocking(False)
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
@@ -203,11 +215,9 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         time.sleep(timeout_interval) # Refreshes in random intervals to avoid connection collisions
         while not data.connected:
             err = connection_socket.connect_ex((host, port)) # Try connecting
-            # print("[SYN]")
             if err == 10056 or err == SUCCESS: # Connection made
                 print(f"Connection to {host}:{port} successful.")
                 data.connected = True
-                # print("[SYN-ACK]")
                 break
             elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY: # Non-blocking connection in progress
                 print(f"Connection to {host}:{port} in progress ...")
@@ -289,8 +299,6 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
             if data.handshake_complete == True:
                 data.inb = BYTES_NONE
                 data.outb = BYTES_NONE
-                print(f"data.inb: {data.inb}")
-                print(f"data.outb: {data.outb}")
                 break
 
         print("TLS handshake successful.")
@@ -302,14 +310,14 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
 
-import ssl
-
-# Connection wrapper
-def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> bytes:
-    while True:
+# Wrapper for receiving data from the socket
+def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> typing.Tuple[bytes, int]:
+    start_time = time.time()
+    while time.time() - start_time < 10:  # Wait 10 seconds until timing out
         try:
             received_bytes = connection_socket.recv(bytes_to_read)
-            return received_bytes
+            return received_bytes, SUCCESS
+        
         except ssl.SSLWantReadError:
             # print("SSLWantReadError: Waiting for more data to be readable...")
             continue
@@ -317,7 +325,8 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
         except ssl.SSLWantWriteError:
             # print("SSLWantWriteError: Waiting until socket is writable...")
             continue
-
+    print("Timeout: No data received within 10 seconds.")
+    return BYTES_NONE, TIMEOUT_ERROR
 
 # Receives the payload from the socket
 def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
@@ -326,7 +335,10 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
         # Read the packet header
         # Receive packed data (integers)
-        header = connection_receive(connection_socket, PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header
+        header, ret_val = connection_receive(connection_socket, PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header
+        if ret_val != SUCCESS:
+            print("Error during connection receive.")
+            return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
         if header == BYTES_NONE: # Closes connection if no data is received from the remote connection
             print("No data received.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
@@ -339,14 +351,24 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
         if header:
             # Receive the nonce and tag
             print("Receiving nonce ...")
-            nonce = connection_receive(connection_socket, NONCE_LENGTH)
+            nonce, ret_val = connection_receive(connection_socket, NONCE_LENGTH)
+            if ret_val != SUCCESS:
+                print("Error during connection receive.")
+                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
             print(f"Nonce: {nonce}")
             print("Receiving tag ...")
-            tag = connection_receive(connection_socket, TAG_LENGTH)
+            tag, ret_val = connection_receive(connection_socket, TAG_LENGTH)
+            if ret_val != SUCCESS:
+                print("Error during connection receive.")
+                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
             print(f"Tag: {tag}")
 
             print("Receiving identifier ...")
-            identifier = (connection_receive(connection_socket, IDENTIFIER_LENGTH)).decode()
+            identifier, ret_val = connection_receive(connection_socket, IDENTIFIER_LENGTH)
+            if ret_val != SUCCESS:
+                print("Error during connection receive.")
+                return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
+            identifier = identifier.decode()
             print(f"Identifier: {identifier}")
 
             # Uses listening port to determine which database to use
@@ -387,7 +409,10 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             payload = BYTES_NONE # Initialise variable
             while len(payload) < payload_length:
                 try:
-                    chunk = connection_receive(connection_socket, BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                    chunk, ret_val = connection_receive(connection_socket, BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                    if ret_val != SUCCESS:
+                        print("Error during connection receive.")
+                        return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
                 except BlockingIOError as e:
                     print(f"BlockingIOError: {e}")
                     if e.errno == errno.EAGAIN:
