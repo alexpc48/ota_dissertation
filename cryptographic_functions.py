@@ -1,19 +1,15 @@
 # HEADER FILE
 # Common cryptographic functions for both the server and client
 
-# Libraries
-import typing
-import random
-import re
-import hashlib
-import os
-import dotenv
-from Crypto.Cipher import AES
-from cryptography.hazmat.primitives.asymmetric import ed25519
-
+# Libraries#
 from constants import *
 
-# dotenv.load_dotenv(override=True) # Refreshes for the security mode variable
+import re
+import hashlib
+from Crypto.Cipher import AES
+from cryptography.hazmat.primitives.asymmetric import ed25519
+import typing
+import random
 
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:

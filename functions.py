@@ -14,6 +14,8 @@ import ssl
 import constants
 import datetime
 import psutil
+import os
+import dotenv
 
 from constants import *
 from cryptographic_functions import *
@@ -408,7 +410,7 @@ def measure_operation(process, func, *args, **kwargs):
     mem_info_end = process.memory_full_info()
     cpu_percent = process.cpu_percent(interval=None)
     snapshot_end = tracemalloc.take_snapshot()
-
+    
     # CPU and memory metrics
     cpu_user = cpu_times_end.user - cpu_times_start.user
     cpu_sys = cpu_times_end.system - cpu_times_start.system
@@ -545,6 +547,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 payload += chunk
             print("Payload received.")
             
+            # TODO: Time all encompassing operations too, not just decryption and verification
             print("Timing security checks ...")
             process = psutil.Process(os.getpid())
             (payload, ret_val), decrypt_stats = measure_operation(process, payload_decryption, payload, nonce, tag, encryption_key)
@@ -597,6 +600,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 f.write(f"----- Received payload diagnostics Log -----\n")
                 f.write(f"Date and Time: {current_time}\n")
+                f.write(f"Using SECURITY_MODE: {SECURITY_MODE}\n")
                 f.write(f"--------------------------------------------\n")
                 f.write(f"------ Security Operation Diagnostics ------\n")
                 log_section("Decryption", decrypt_stats, f)

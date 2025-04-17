@@ -9,3 +9,4 @@ build/
 *.exe
 *.spec
 install_location/
+*diagnostics.txt
