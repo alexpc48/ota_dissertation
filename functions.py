@@ -513,6 +513,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
             # Retrieve symmetric encrypion key
             print(f"Retrieving encryption key from {database} ...")
+            print(encryption_query)
             db_connection = sqlite3.connect(database)
             cursor = db_connection.cursor()
             if port == SERVER_PORT:
@@ -521,6 +522,8 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 encryption_key = (cursor.execute(encryption_query)).fetchone()[0]
             db_connection.close()
             print("Retrieved encryption key.")
+
+            print(f"Encryption key: {encryption_key}")
                     
             # Unpack the header
             print("Unpacking header ...")

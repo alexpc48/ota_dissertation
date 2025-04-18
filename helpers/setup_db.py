@@ -21,14 +21,14 @@ def get_update_file(file: str) -> typing.Tuple[bytes, int]:
 if __name__=='__main__':
 
     # Running on network OTA
-    # server_ip, server_port = '192.168.225.97', 50097
-    # windows_ip, windows_port = '192.168.225.150', 50150
-    # linux_ip, linux_port = '192.168.225.69', 50069
+    server_ip, server_port = '192.168.225.97', 50097
+    windows_ip, windows_port = '192.168.225.150', 50150
+    linux_ip, linux_port = '192.168.225.69', 50069
 
     # Running on local machine (testing on development machine)
-    server_ip, server_port = '127.0.0.1', 50097
-    windows_ip, windows_port = '127.0.0.1', 50150
-    linux_ip, linux_port = '127.0.0.1', 50069
+    # server_ip, server_port = '127.0.0.1', 50097
+    # windows_ip, windows_port = '127.0.0.1', 50150
+    # linux_ip, linux_port = '127.0.0.1', 50069
 
     # print("Removing old diagnostics file ...")
     # if os.path.exists('*diagnostics.txt'):
@@ -99,6 +99,15 @@ if __name__=='__main__':
         linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
 
+    print("************************************************")
+    print(f"Root CA: {root_ca}")
+    print(f"Server private key: {server_private_key}")
+    # print(f"Server certificate: {server_certificate}")
+    print(f"Windows client private key: {windows_client_private_key}")
+    # print(f"Windows client certificate: {windows_client_certificate}")
+    print(f"Linux client private key: {linux_client_private_key}")
+    # print(f"Linux client certificate: {linux_client_certificate}")
+    print("************************************************")
 
     print("Example data prepared.")
 
