@@ -16,8 +16,13 @@ import random
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
         print("Encrypting payload ...")
+
         nonce = random.randbytes(12)
-        tag = random.randbytes(TAG_LENGTH)
+        # tag = random.randbytes(TAG_LENGTH)
+
+        print(f"Nonce length: {len(nonce)}")
+        print(f"Nonce: {nonce}")
+
         if SECURITY_MODE == 0: # Testing purpose, no encryption
             # Generate random nonce and tag as fillers (not secure)
             # nonce = random.randbytes(NONCE_LENGTH)
@@ -29,9 +34,16 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
             print("Using AES encryption.")
             encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
             # nonce = encryption_cipher.nonce
-            # encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
-            encrypted_payload = encryption_cipher.encrypt(payload)
+            encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
+            # encrypted_payload = encryption_cipher.encrypt(payload)
         
+        print(f"Tag: {tag}")
+        print(f"Tag length: {len(tag)}")
+
+        print(f"Encrypted key: {encryption_key}")
+
+        print(f"Payload: {encrypted_payload}")
+
         print("Payload encrypted.")
         # encrypted_payload += b'malicious_code' # Makes the authentication fail for the encrypted payload as tag was generated on the original encrypted payload
         return nonce, encrypted_payload, tag, SUCCESS
@@ -44,6 +56,14 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
 def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
         print("Decrypting payload ...")
+
+        print(f"Nonce length: {len(nonce)}")
+        print(f"Nonce: {nonce}")
+        print(f"Tag: {tag}")
+        print(f"Tag length: {len(tag)}")
+        print(f"Payload: {payload}")
+        print(f"Encryption key: {encryption_key}")
+
         if SECURITY_MODE == 0:
             decrypted_payload = payload
             print("No decryption needed.")
@@ -51,7 +71,8 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
         elif re.search(r'\baes', ENCRYPTION_ALGORITHM) and SECURITY_MODE == 1: # AES
             print("Using AES decryption.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
-            decrypted_payload = decryption_cipher.decrypt(payload)
+            decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
+            # decrypted_payload = decryption_cipher.decrypt(payload)
             print(f"Decrypted payload: {decrypted_payload}")
 
         print("Payload decrypted.")
