@@ -12,6 +12,8 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 import typing
 from Crypto.Random import get_random_bytes
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
@@ -24,10 +26,16 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
             print("No encryption needed.")
         
         elif re.search(r'\baes', ENCRYPTION_ALGORITHM) and SECURITY_MODE == 1: # AES
-            print("Using AES encryption.")
-            encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
-            # nonce = encryption_cipher.nonce
-            encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
+            # print("Using AES encryption.")
+            # encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
+            # # nonce = encryption_cipher.nonce
+            # encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
+            print("Using AES-GCM encryption (cryptography).")
+            # nonce = os.urandom(12)
+            aesgcm = AESGCM(encryption_key)
+            encrypted_with_tag = aesgcm.encrypt(nonce, payload, None)
+            encrypted_payload = encrypted_with_tag[:-16]
+            tag = encrypted_with_tag[-16:]
         
         print("Payload encrypted.")
         # encrypted_payload += b'malicious_code' # Makes the authentication fail for the encrypted payload as tag was generated on the original encrypted payload
@@ -46,9 +54,12 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
             print("No decryption needed.")
         
         elif re.search(r'\baes', ENCRYPTION_ALGORITHM) and SECURITY_MODE == 1: # AES
-            print("Using AES decryption.")
-            decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
-            decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
+            # print("Using AES decryption.")
+            # decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
+            # decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
+            print("Using AES-GCM decryption (cryptography).")
+            aesgcm = AESGCM(encryption_key)
+            decrypted_payload = aesgcm.decrypt(nonce, payload + tag, None)
 
         print("Payload decrypted.")
         return decrypted_payload, SUCCESS
