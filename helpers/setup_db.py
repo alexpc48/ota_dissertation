@@ -15,6 +15,12 @@ def get_update_file(file: str) -> typing.Tuple[bytes, int]:
         file_data = file.read()
     return file_data, 0
 
+def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
+    data = data.decode('utf-8')
+    data = data.replace('\n', '\r\n')
+    data = data.encode('utf-8')
+    return data, 0
+
 # Sets up the data base for the system
 # Not dynamically created so it simulates real application (pre-made dataases)
 # Uses SQLite for simplicity as database tehcnology is out of scope
@@ -99,15 +105,13 @@ if __name__=='__main__':
         linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
 
-    print("************************************************")
-    print(f"Root CA: {root_ca}")
-    print(f"Server private key: {server_private_key}")
-    # print(f"Server certificate: {server_certificate}")
-    print(f"Windows client private key: {windows_client_private_key}")
-    # print(f"Windows client certificate: {windows_client_certificate}")
-    print(f"Linux client private key: {linux_client_private_key}")
-    # print(f"Linux client certificate: {linux_client_certificate}")
-    print("************************************************")
+        root_ca, _ = convert_data_format(root_ca)
+        server_private_key, _ = convert_data_format(server_private_key)
+        server_certificate, _ = convert_data_format(server_certificate)
+        windows_client_private_key, _ = convert_data_format(windows_client_private_key)
+        windows_client_certificate, _ = convert_data_format(windows_client_certificate)
+        linux_client_private_key, _ = convert_data_format(linux_client_private_key)
+        linux_client_certificate, _ = convert_data_format(linux_client_certificate)
 
     print("Example data prepared.")
 
