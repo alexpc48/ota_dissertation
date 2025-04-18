@@ -532,8 +532,10 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             print("Payload received.")
 
             print(f"Header: {header}")
+            print(f"Nonce length: {len(nonce)}")
             print(f"Nonce: {nonce}")
             print(f"Tag: {tag}")
+            print(f"Tag length: {len(tag)}")
             print(f"Identifier: {identifier}")
             print(f"Payload length: {payload_length}")
             print(f"Data type: {data_type}")
@@ -676,6 +678,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
         print(f"Header: {header}")
+        print(f"Nonce length: {len(nonce)}")
         print(f"Nonce: {nonce}")
         print(f"Tag: {tag}")
         print(f"Identifier: {identifier}")
