@@ -204,8 +204,6 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
 # Creates a connection to an endpoint
 def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
-        print(f"Initiating connection to {host}:{port} ...")
-
         # TLS implementation
         context, _ = create_context('client')
         _, check_port = LISTENING_SOCKET_INFO
@@ -248,6 +246,8 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         except:
             print("1 or more temporary files not found.")
         print("Temporary files removed.")
+
+        print(f"Initiating connection to {host}:{port} ...")
 
         connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connection_socket.setblocking(False)
@@ -530,6 +530,11 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INCOMPLETE_PAYLOAD_ERROR
                 payload += chunk
             print("Payload received.")
+
+            print(f"Header: {header}")
+            print(f"Nonce: {nonce}")
+            print(f"Tag: {tag}")
+            print(f"Identifier: {identifier}")
             
             # TODO: Time all encompassing operations too, not just decryption and verification
             print("Timing security checks ...")
