@@ -96,6 +96,21 @@ if __name__=='__main__':
         linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate.pem")
 
+        root_ca = root_ca.decode('utf-8')
+        root_ca = root_ca.encode('utf-8')
+        server_private_key = server_private_key.decode('utf-8')
+        server_private_key = server_private_key.encode('utf-8')
+        server_certificate = server_certificate.decode('utf-8')
+        server_certificate = server_certificate.encode('utf-8')
+        windows_client_private_key = windows_client_private_key.decode('utf-8')
+        windows_client_private_key = windows_client_private_key.encode('utf-8')
+        windows_client_certificate = windows_client_certificate.decode('utf-8')
+        windows_client_certificate = windows_client_certificate.encode('utf-8')
+        linux_client_private_key = linux_client_private_key.decode('utf-8')
+        linux_client_private_key = linux_client_private_key.encode('utf-8')
+        linux_client_certificate = linux_client_certificate.decode('utf-8')
+        linux_client_certificate = linux_client_certificate.encode('utf-8')
+
     elif os_type == "Linux":
         root_ca, _ = get_update_file("cryptographic_material/root_ca.pem")
         server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
@@ -104,7 +119,7 @@ if __name__=='__main__':
         windows_client_certificate, _ = get_update_file("cryptographic_material/windows_client_certificate.pem")
         linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
-
+        
         root_ca, _ = convert_data_format(root_ca)
         server_private_key, _ = convert_data_format(server_private_key)
         server_certificate, _ = convert_data_format(server_certificate)
@@ -112,6 +127,13 @@ if __name__=='__main__':
         windows_client_certificate, _ = convert_data_format(windows_client_certificate)
         linux_client_private_key, _ = convert_data_format(linux_client_private_key)
         linux_client_certificate, _ = convert_data_format(linux_client_certificate)
+
+
+    print("************************************************")
+    print(f"Server private key: {server_private_key}")
+    print(f"Windows client private key: {windows_client_private_key}")
+    print(f"Linux client private key: {linux_client_private_key}")
+    print("************************************************")
 
     print("Example data prepared.")
 
