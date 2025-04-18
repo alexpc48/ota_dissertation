@@ -15,6 +15,7 @@ def get_update_file(file: str) -> typing.Tuple[bytes, int]:
         file_data = file.read()
     return file_data, 0
 
+# Converts \n to \r\n for same formatting across platforms
 def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
     data = data.decode('utf-8')
     data = data.replace('\n', '\r\n')
@@ -61,11 +62,6 @@ if __name__=='__main__':
         file6 = 'updates/daffy_duck.png'
     
     # Creates cryptographic material
-    # AES keys
-    aes_128_windows_client = get_random_bytes(16)
-    aes_256_windows_client = get_random_bytes(32)
-    aes_128_linux_client = get_random_bytes(16)
-    aes_256_linux_client = get_random_bytes(32)
 
     # Ed25519 keys
     # Generates public and private keys for the server and clients
@@ -83,11 +79,13 @@ if __name__=='__main__':
     linux_eddsa_private_key = linux_eddsa_private_key.private_bytes_raw()
     linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
 
-    # Certificates
-    # Certificates are pre-made and stored as files
+    # Certificates and keys are pre-made and stored as files
     # In reality would be generated and signed by a CA
-    # See certificate_openssl_commands.txt for commands to generate the Ed25119 certificates
     if os_type == "Windows":
+        aes_128_windows_client, _ = get_update_file("cryptographic_material\\aes_128_windows_client.key")
+        aes_256_windows_client, _ = get_update_file("cryptographic_material\\aes_256_windows_client.key")
+        aes_128_linux_client, _ = get_update_file("cryptographic_material\\aes_128_linux_client.key")
+        aes_256_linux_client, _ = get_update_file("cryptographic_material\\aes_256_linux_client.key")
         root_ca, _ = get_update_file("cryptographic_material\\root_ca.pem")
         server_private_key, _ = get_update_file("cryptographic_material\\server_private_key.pem")
         server_certificate, _ = get_update_file("cryptographic_material\\server_certificate.pem")
@@ -96,6 +94,12 @@ if __name__=='__main__':
         linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate.pem")
 
+        # aes_128_windows_client = aes_128_windows_client.decode('utf-8')
+        # aes_128_windows_client = aes_128_windows_client.encode('utf-8')
+        # aes_256_windows_client = aes_256_windows_client.decode('utf-8')
+        # aes_256_windows_client = aes_256_windows_client.encode('utf-8')
+        # aes_128_linux_client = aes_128_linux_client.decode('utf-8')
+        # aes_128_linux_client = aes_128_linux_client.encode('utf-8')
         root_ca = root_ca.decode('utf-8')
         root_ca = root_ca.encode('utf-8')
         server_private_key = server_private_key.decode('utf-8')
@@ -112,6 +116,10 @@ if __name__=='__main__':
         linux_client_certificate = linux_client_certificate.encode('utf-8')
 
     elif os_type == "Linux":
+        aes_128_windows_client, _ = get_update_file("cryptographic_material/aes_128_windows_client.key")
+        aes_256_windows_client, _ = get_update_file("cryptographic_material/aes_256_windows_client.key")
+        aes_128_linux_client, _ = get_update_file("cryptographic_material/aes_128_linux_client.key")
+        aes_256_linux_client, _ = get_update_file("cryptographic_material/aes_256_linux_client.key")
         root_ca, _ = get_update_file("cryptographic_material/root_ca.pem")
         server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
         server_certificate, _ = get_update_file("cryptographic_material/server_certificate.pem")
@@ -120,6 +128,10 @@ if __name__=='__main__':
         linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
         linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
         
+        # aes_128_windows_client, _ = convert_data_format(aes_128_windows_client)
+        # aes_256_windows_client, _ = convert_data_format(aes_256_windows_client)
+        # aes_128_linux_client, _ = convert_data_format(aes_128_linux_client)
+        # aes_256_linux_client, _ = convert_data_format(aes_256_linux_client)
         root_ca, _ = convert_data_format(root_ca)
         server_private_key, _ = convert_data_format(server_private_key)
         server_certificate, _ = convert_data_format(server_certificate)
