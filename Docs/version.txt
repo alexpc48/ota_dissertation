@@ -1,5 +1,1 @@
-v1.26
-Updates now downloaded and stored in the database
-Removed the update readiness status check from update downloads (not needed)
-Added install option
-Added extra update queue to the client databases
+$ git checkout 527aced6f1e4604412871ac2729c5a498903e2d1 - before security
