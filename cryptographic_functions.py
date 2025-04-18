@@ -10,16 +10,16 @@ import hashlib
 from Crypto.Cipher import AES
 from cryptography.hazmat.primitives.asymmetric import ed25519
 import typing
-import random
+from Crypto.Random import get_random_bytes
 
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
         print("Encrypting payload ...")
-        nonce = random.randbytes(NONCE_LENGTH)
+        nonce = get_random_bytes(NONCE_LENGTH)
         if SECURITY_MODE == 0: # Testing purpose, no encryption
             # Generate random nonce and tag as fillers (not secure)
-            tag = random.randbytes(TAG_LENGTH)
+            tag = get_random_bytes(TAG_LENGTH)
             encrypted_payload = payload
             print("No encryption needed.")
         
