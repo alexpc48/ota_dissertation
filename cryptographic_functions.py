@@ -49,6 +49,7 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
             print("Using AES decryption.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
             decrypted_payload = decryption_cipher.decrypt(payload)
+            print(f"Decrypted payload: {decrypted_payload}")
 
         print("Payload decrypted.")
         return decrypted_payload, SUCCESS
