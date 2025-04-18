@@ -113,7 +113,6 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
         print("Socket registered.")
-
         return selector, connection_socket, SUCCESS
     
     except Exception as e:

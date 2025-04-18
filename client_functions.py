@@ -27,8 +27,8 @@ def options_menu() -> str:
     print("10. Change the update readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status")
-    print("21. Display the update status") # TODO
-    print("22. Display the update version")
+    # print("21. Display the update status") # TODO
+    print("21. Display the update version")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("-------------------------------------------------------------------------------------------")

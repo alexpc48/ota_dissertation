@@ -22,12 +22,12 @@ def options_menu() -> str:
     print("1. Push the latest update to the client")
     print("-------------------------------------------------------------------------------------------")
     print("10. Get the client update readiness status")
-    print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
-    print("12. Get the client update version")
-    print("-------------------------------------------------------------------------------------------")
-    print("20. Change the update file") # TODO
-    print("-------------------------------------------------------------------------------------------")
-    print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
+    # print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
+    print("11. Get the client update version")
+    # print("-------------------------------------------------------------------------------------------")
+    # print("20. Change the update file") # TODO
+    # print("-------------------------------------------------------------------------------------------")
+    # print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")

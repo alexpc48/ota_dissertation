@@ -81,7 +81,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occured.")
                         print("Please check the logs for more details.")
 
-                case '22':
+                case '21':
                     print("Displaying the update version ...")
                     update_version, _, ret_val = get_update_version()
                     if ret_val == SUCCESS:
