@@ -5,6 +5,7 @@
 from constants import *
 
 import re
+import ssl
 import hashlib
 from Crypto.Cipher import AES
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -157,3 +158,35 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
     except Exception as e:
         print(f"An error occurred during signature verification: {e}")
         return ERROR
+
+# Wrapper to create TLS contexts
+def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
+    try:
+        if mode == 'server':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
+            # Disable older protocols for security
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            # Set ciphers for security
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False # No hostnames in use, but real implementation would use hostnames
+            return context, SUCCESS
+        elif mode == 'client':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = False
+            return context, SUCCESS
+        else:
+            print("Invalid mode. Use 'server' or 'client'.")
+            return None, ERROR
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, ERROR

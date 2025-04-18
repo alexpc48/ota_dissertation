@@ -89,38 +89,6 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
         print(f"An error occurred: {e}")
         _ = close_connection(listening_socket, selector)
         return LISTENING_SOCKET_CREATION_ERROR
-    
-# Wrapper to create TLS contexts
-def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
-    try:
-        if mode == 'server':
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
-            # Disable older protocols for security
-            context.options |= ssl.OP_NO_SSLv2
-            context.options |= ssl.OP_NO_SSLv3
-            context.options |= ssl.OP_NO_TLSv1
-            context.options |= ssl.OP_NO_TLSv1_1
-            # Set ciphers for security
-            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
-            context.verify_mode = ssl.CERT_REQUIRED
-            context.check_hostname = False # No hostnames in use, but real implementation would use hostnames
-            return context, SUCCESS
-        elif mode == 'client':
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
-            context.options |= ssl.OP_NO_SSLv2
-            context.options |= ssl.OP_NO_SSLv3
-            context.options |= ssl.OP_NO_TLSv1
-            context.options |= ssl.OP_NO_TLSv1_1
-            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
-            context.verify_mode = ssl.CERT_REQUIRED
-            context.check_hostname = False
-            return context, SUCCESS
-        else:
-            print("Invalid mode. Use 'server' or 'client'.")
-            return None, ERROR
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None, ERROR
 
 # Accepts new connections
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
@@ -148,19 +116,26 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         root_ca = root_ca.decode()
         db_connection.close()
 
+        connection_private_key_file = "accept_connection_private_key.pem"
+        connection_certificate_file = "accept_connection_certificate.pem"
+        root_ca_file = "root_ca.pem"
+
         # Work around for having hardcoded certificate paths
         # Allows server and clients to use their certificates
-        with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:
-            connection_certificate_temp.write(connection_certificate)
+        with open(connection_private_key_file, "w", newline='') as connection_private_key_temp, open(connection_certificate_file, "w", newline='') as connection_certificate_temp, open(root_ca_file, "w", newline='') as root_ca_temp:
             connection_private_key_temp.write(connection_private_key)
+            connection_certificate_temp.write(connection_certificate)
             root_ca_temp.write(root_ca)
-        context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
+        context.load_cert_chain(certfile=connection_certificate_file, keyfile=connection_private_key_file)
         context.load_verify_locations(cafile="root_ca.pem")
         print("Certificates loaded.")
         print("Removing temporary files ...")
-        # os.remove("connection_certificate.pem")
-        # os.remove("connection_private_key.pem")
-        # os.remove("root_ca.pem")
+        try:
+            os.remove(connection_private_key_file)
+            os.remove(connection_certificate_file)
+            os.remove(root_ca_file)
+        except:
+            print("1 or more temporary files not found.")
         print("Temporary files removed.")
 
         connection_socket, address = socket.accept()
@@ -178,7 +153,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
 
         print("Waiting for TLS handshake ...")
         # Waits for TLS handshake confirmation to be sent
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < 10:  # Wait 10 seconds until timing out
             # Get list of events from the selector
             timeout_interval = random.randint(1, 10)
             events = selector.select(timeout=timeout_interval)
@@ -214,7 +190,9 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
                 data.inb = BYTES_NONE
                 data.outb = BYTES_NONE
                 break
-
+        if data.handshake_complete == False:
+            print("TLS handshake timed out.")
+            return ERROR
         print("TLS handshake successful.")
         return SUCCESS
     
@@ -247,28 +225,32 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         connection_private_key = connection_private_key.decode()
         connection_certificate = connection_certificate.decode()
         root_ca = root_ca.decode()
-        # print(f"Connection certificate: {connection_certificate}")
-        # print(f"Connection private key: {connection_private_key}")
-        # print(f"Root CA: {root_ca}")
         db_connection.close()
 
-        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection_socket.setblocking(False)
+        connection_private_key_file = "create_connection_private_key.pem"
+        connection_certificate_file = "create_connection_certificate.pem"
+        root_ca_file = "root_ca.pem"
 
         # Work around for having hardcoded certificate paths
         # Allows server and clients to use their certificates
-        with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:
-            connection_certificate_temp.write(connection_certificate)
+        with open(connection_private_key_file, "w", newline='') as connection_private_key_temp, open(connection_certificate_file, "w", newline='') as connection_certificate_temp, open(root_ca_file, "w", newline='') as root_ca_temp:
             connection_private_key_temp.write(connection_private_key)
+            connection_certificate_temp.write(connection_certificate)
             root_ca_temp.write(root_ca)
-        context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
+        context.load_cert_chain(certfile=connection_certificate_file, keyfile=connection_private_key_file)
         context.load_verify_locations(cafile="root_ca.pem")
         print("Certificates loaded.")
         print("Removing temporary files ...")
-        os.remove("connection_certificate.pem")
-        os.remove("connection_private_key.pem")
-        os.remove("root_ca.pem")
+        try:
+            os.remove(connection_private_key_file)
+            os.remove(connection_certificate_file)
+            os.remove(root_ca_file)
+        except:
+            print("1 or more temporary files not found.")
         print("Temporary files removed.")
+
+        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connection_socket.setblocking(False)
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
@@ -304,7 +286,8 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
 
         # TLS implementation
         connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False) # Wraps the socket with TLS
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < 10:  # Wait 10 seconds until timing out
             try:
                 # print("Performing TLS handshake ...")
                 connection_socket.do_handshake()
@@ -364,9 +347,10 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 data.inb = BYTES_NONE
                 data.outb = BYTES_NONE
                 break
-
+        if data.handshake_complete == False:
+            print("TLS handshake timed out.")
+            return ERROR
         print("TLS handshake successful.")
-
         return selector, connection_socket, SUCCESS
     
     except Exception as e:
@@ -392,7 +376,7 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
     print("Timeout: No data received within 10 seconds.")
     return BYTES_NONE, TIMEOUT_ERROR
 
-# ChatGPT used
+# ChatGPT used to help create a metrics capture for security operations
 def measure_operation(process, func, *args, **kwargs):
     """Profile a specific function call and return result + diagnostics."""
     tracemalloc.start()
@@ -597,7 +581,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
             # Use of ChatGPT for creating logging functionality
             with open(diagnostics_file, 'a') as f:
-                current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
                 f.write(f"----- Received payload diagnostics Log -----\n")
                 f.write(f"Date and Time: {current_time}\n")
                 f.write(f"Using SECURITY_MODE: {SECURITY_MODE}\n")
