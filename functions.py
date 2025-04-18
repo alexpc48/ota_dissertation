@@ -535,6 +535,12 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             print(f"Nonce: {nonce}")
             print(f"Tag: {tag}")
             print(f"Identifier: {identifier}")
+            print(f"Payload length: {payload_length}")
+            print(f"Data type: {data_type}")
+            print(f"File name length: {file_name_length}")
+            print(f"Data subtype: {data_subtype}")
+            print(f"Payload: {payload}")
+
             
             # TODO: Time all encompassing operations too, not just decryption and verification
             print("Timing security checks ...")
@@ -663,15 +669,21 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
 
         payload_length = len(encrypted_payload)
+        file_name_length = len(file_name)
 
         # Only packs integers for the header
-        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
+        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, file_name_length, data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
         print(f"Header: {header}")
         print(f"Nonce: {nonce}")
         print(f"Tag: {tag}")
         print(f"Identifier: {identifier}")
+        print(f"Payload length: {payload_length}")
+        print(f"Data type: {data_type}")
+        print(f"File name length: {file_name_length}")
+        print(f"Data subtype: {data_subtype}")
+        print(f"Payload: {payload}")
 
         return data_to_send, SUCCESS
 
