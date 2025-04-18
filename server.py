@@ -8,7 +8,7 @@ from server_thread_functions import *
 # Main program
 if __name__=='__main__':
     # Create a selector object
-    selector = selectors.DefaultSelector()
+    selector = selectors.SelectSelector()
 
     dotenv.load_dotenv()
     database = os.getenv("SERVER_DATABASE")

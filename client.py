@@ -6,7 +6,7 @@ from client_thread_functions import *
 # Main program
 if __name__=='__main__':
     # Create a selector object
-    selector = selectors.DefaultSelector()
+    selector = selectors.SelectSelector()
 
     # Get local host and port for the listening socket
     database, ret_val = get_client_database()
