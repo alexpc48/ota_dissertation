@@ -339,11 +339,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
 
         # Check if there is an update queued for download
         ret_val = check_update_in_downloads_buffer()
-        if ret_val == QUEUED_UPDATE_ERROR: # Expected result is for an update to be queued
-            print("An update is queued for install.")
-            print("Please install the update before downloading a new one.")
-            return QUEUED_UPDATE_ERROR
-        elif ret_val == ERROR:
+        if ret_val == ERROR:
             print("There is no update queued for install.")
             print("Please download an update before installing.")
             return UPDATE_NOT_AVALIABLE_ERROR

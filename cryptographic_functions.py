@@ -9,7 +9,12 @@ import hashlib
 from Crypto.Cipher import AES
 from cryptography.hazmat.primitives.asymmetric import ed25519
 import typing
+import types
+import ssl
+import os
+import sqlite3
 import random
+import selectors
 
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
@@ -128,4 +133,133 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
     
     except Exception as e:
         print(f"An error occurred during signature verification: {e}")
+        return ERROR
+
+# Wrapper to create TLS contexts
+def create_context(mode: str, port: int) -> typing.Tuple[ssl.SSLContext, int]:
+    try:
+        if mode == 'server':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # Auto-negotiates highgest available protocol
+            # Disable older protocols for security
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            # Set ciphers for security
+            # TODO: Use list of insecure hashes and encryption algorithms
+            # Use only strong 128-bit+ ciphers | Exclude non-authentication ciphers | Exclude non-encryption ciphers | Exclude MD5 and SHA1 hashes | Exclude 3DES and RC4 ciphers
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
+            context.verify_mode = ssl.CERT_REQUIRED
+
+        elif mode == 'client':
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
+            context.options |= ssl.OP_NO_SSLv2
+            context.options |= ssl.OP_NO_SSLv3
+            context.options |= ssl.OP_NO_TLSv1
+            context.options |= ssl.OP_NO_TLSv1_1
+            # TODO: Use list of insecure hashes and encryption algorithms
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = True
+        else:
+            print("Invalid mode. Use 'server' or 'client'.")
+            return None, ERROR
+        
+        context, ret_val = load_cryptographic_data(context, port)
+        if ret_val == ERROR:
+            print("Error loading cryptographic data.")
+            return None, ERROR
+
+        return context, SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, ERROR
+
+def load_cryptographic_data(context: ssl.SSLContext, port: int) -> typing.Tuple[ssl.SSLContext, int]:
+    try:
+        if port == SERVER_PORT:
+            database = os.getenv("SERVER_DATABASE")
+            query = "SELECT server_private_key, server_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif port == WINDOWS_PORT:
+            database = os.getenv("WINDOWS_CLIENT_DATABASE")
+            query = "SELECT windows_client_private_key, windows_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+        elif port == LINUX_PORT:
+            database = os.getenv("LINUX_CLIENT_DATABASE")
+            query = "SELECT linux_client_private_key, linux_client_certificate, root_ca FROM cryptographic_data WHERE cryptographic_entry_id = 1"
+
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        connection_private_key, connection_certificate, root_ca = (cursor.execute(query)).fetchone()
+        connection_private_key = connection_private_key.decode()
+        connection_certificate = connection_certificate.decode()
+        root_ca = root_ca.decode()
+        db_connection.close()
+
+        # Work around for having hardcoded certificate paths
+        # Allows server and clients to use their respective certificates
+        with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:
+            connection_certificate_temp.write(connection_certificate)
+            connection_private_key_temp.write(connection_private_key)
+            root_ca_temp.write(root_ca)
+        context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
+        context.load_verify_locations(cafile="root_ca.pem")
+        print("Certificates loaded.")
+        print("Removing temporary files ...")
+        os.remove("connection_certificate.pem")
+        os.remove("connection_private_key.pem")
+        os.remove("root_ca.pem")
+        print("Temporary files removed.")
+
+        return context, SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred while loading cryptographic data: {e}")
+        return None, ERROR
+
+# Implemented as a workaround for the client going into receive mode after the handshake is complete instead of write mode
+def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors.DefaultSelector) -> int:
+    try:
+        # Waits for TLS handshake confirmation to be sent
+        while True:
+            # Get list of events from the selector
+            timeout_interval = random.randint(1, 10)
+            events = selector.select(timeout=timeout_interval)
+            for key, mask in events:
+                if key.data == "listening_socket":
+                    continue
+
+                connection_socket = key.fileobj
+
+                if key.data.outb != HANDSHAKE_COMPLETE:
+                    # Read events
+                    if mask & selectors.EVENT_READ:                        
+                        try:
+                            key.data.inb = connection_socket.recv(STATUS_CODE_SIZE)
+                            if key.data.inb == HANDSHAKE_COMPLETE:
+                                print("TLS handshake complete.")
+                                key.data.outb = HANDSHAKE_FINISHED
+                            key.data.handshake_complete = True
+                        except ssl.SSLWantReadError:
+                            continue
+                        except ssl.SSLWantWriteError:
+                            continue
+                if mask & selectors.EVENT_WRITE:
+                    if key.data.outb:
+                        while key.data.outb:
+                            sent = connection_socket.send(key.data.outb)
+                            key.data.outb = key.data.outb[sent:]
+                        key.data.outb = BYTES_NONE
+                        print("Data sent.")
+                        break
+
+            if key.data.handshake_complete == True:
+                key.data.inb = BYTES_NONE
+                key.data.outb = BYTES_NONE
+                break
+
+        return SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred during TLS handshake: {e}")
         return ERROR
