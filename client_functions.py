@@ -34,10 +34,6 @@ def options_menu() -> str:
 def get_os_type() -> typing.Tuple[str, int]:
     try:
         os_type = platform.system()
-        # if os_type == "Windows":
-        #     print("The machine is running Windows.")
-        # elif os_type == "Linux":
-        #     print("The machine is running Linux.")
         if os_type != "Windows" and os_type != "Linux":
             # print(f"Unknown operating system: {os_type}")
             return STR_NONE, ERROR
@@ -51,9 +47,6 @@ def get_os_type() -> typing.Tuple[str, int]:
 def get_client_database() -> typing.Tuple[str, int]:
     try:
         os_type, ret_val = get_os_type()
-        # if ret_val == SUCCESS:
-            # print("OS type retrieved successfully.")
-        # else:
         if ret_val == ERROR:
             print("An error occurred while retrieving the OS type.")
             print("Please check the logs for more details.")
@@ -258,6 +251,8 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
             print("Please check the logs for more details.")
             return ERROR
 
+        # Removed checking for an update first before downloading
+        # This way initiates another new connection - slow and uneeded
         # update_available, _ = check_for_update(selector, response_event, response_data)
         # if update_available == False:
         #     print("No update available to download.")
@@ -329,6 +324,7 @@ def write_update_file_to_database(update_file_name: str, file_data: bytes) -> in
         return DOWNLOAD_UPDATE_ERROR
     
 # Installs the update from the downloads buffer in the database
+# TODO: Respond to the server the new update version installed
 def install_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         # Checks if ready to install the update
@@ -376,6 +372,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
         db_connection.commit()
         print("Update file removed from the download queue.")
 
+        # TODO: Update time of install
         cursor.execute("UPDATE update_information SET update_version = ? WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed
         db_connection.commit()
         print("Update version updated in the database.")

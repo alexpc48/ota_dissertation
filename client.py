@@ -27,7 +27,6 @@ if __name__=='__main__':
         print("Failed to create listening socket")
         sys.exit(ret_val)
 
-    # TODO: https://chatgpt.com/share/67e84e7a-d6c4-800e-8a96-363fbded93a6
     response_event = threading.Event() # Used to signal when a connection has been serviced
     response_data = {} # Data dictionary for global access
 

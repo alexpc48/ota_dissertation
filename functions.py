@@ -101,10 +101,10 @@ def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
             context.options |= ssl.OP_NO_TLSv1
             context.options |= ssl.OP_NO_TLSv1_1
             # Set ciphers for security
+            # TODO: Use list of insecure hashes and encryption algorithms
             # Use only strong 128-bit+ ciphers | Exclude non-authentication ciphers | Exclude non-encryption ciphers | Exclude MD5 and SHA1 hashes | Exclude 3DES and RC4 ciphers
             context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
             context.verify_mode = ssl.CERT_REQUIRED
-            # context.check_hostname = True
             return context, SUCCESS
         elif mode == 'client':
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
@@ -112,6 +112,7 @@ def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
             context.options |= ssl.OP_NO_SSLv3
             context.options |= ssl.OP_NO_TLSv1
             context.options |= ssl.OP_NO_TLSv1_1
+            # TODO: Use list of insecure hashes and encryption algorithms
             context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
             context.verify_mode = ssl.CERT_REQUIRED
             context.check_hostname = True

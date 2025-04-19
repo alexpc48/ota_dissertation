@@ -27,6 +27,9 @@ def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
 # Uses SQLite for simplicity as database tehcnology is out of scope
 if __name__=='__main__':
 
+    print("Setting networking information ...")
+    # Change network information accordingly to use either on a custom local network, or on a singlular local machine
+
     # Running on network OTA
     # Pi as server
     # server_ip, server_port = '192.168.225.97', 50097
@@ -46,10 +49,7 @@ if __name__=='__main__':
     linux_ip, linux_port = '127.0.0.1', 50069
     test_environment = True
 
-    # print("Removing old diagnostics file ...")
-    # if os.path.exists('*diagnostics.txt'):
-    #     os.remove('*diagnostics.txt')
-    # print("Old diagnostics file removed.")
+    print("Networking information set.")
 
     print("Preparing example data ...")
     # Loads update files
@@ -90,7 +90,7 @@ if __name__=='__main__':
     # Certificates and keys are pre-made and stored as files
     # In reality would be generated and signed by a CA
     # Different certificates are used for network-based OTA and local OTA for testing to enable context.check_hostname to work
-    # New certificates were generated so the CN was 127.0.0.1 when in testing meaning not proper hostname checking as opposed to network-based OTA
+    # New certificates were generated so the SAN was 127.0.0.1 when in testing
     if os_type == "Windows":
         aes_128_windows_client, _ = get_update_file("cryptographic_material\\aes_128_windows_client.key")
         aes_256_windows_client, _ = get_update_file("cryptographic_material\\aes_256_windows_client.key")
@@ -156,13 +156,6 @@ if __name__=='__main__':
         windows_client_certificate, _ = convert_data_format(windows_client_certificate)
         linux_client_private_key, _ = convert_data_format(linux_client_private_key)
         linux_client_certificate, _ = convert_data_format(linux_client_certificate)
-
-
-    # print("************************************************")
-    # print(f"Server private key: {server_private_key}")
-    # print(f"Windows client private key: {windows_client_private_key}")
-    # print(f"Linux client private key: {linux_client_private_key}")
-    # print("************************************************")
 
     print("Example data prepared.")
 

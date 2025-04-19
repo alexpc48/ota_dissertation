@@ -47,3 +47,4 @@ del D:\ota_cert_conf.txt
 # Server CN = 192.168.225.69
 # Windows CN = 192.168.225.150
 # Linux CN = 192.168.225.97
+# TODO

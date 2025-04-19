@@ -11,48 +11,21 @@ def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
-    print("1. Push the latest update to the client") # TODO: Check first if the client already has the update
+    print("1. Push the latest update to a client") # TODO: Check first if the client already has the update
     print("-------------------------------------------------------------------------------------------")
-    print("10. Get the client update readiness status") # TODO: Remove maybe - not that relevant information
-    print("11. Get the client update status") # TODO: Check if the update has been installed, failed, behind, etc.
-    print("12. Get the client update version")
-    print("-------------------------------------------------------------------------------------------")
-    print("20. Change the update file") # TODO
-    print("-------------------------------------------------------------------------------------------")
-    print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
+    print("10. Get a clients update readiness status")
+    print("11. Get a clients update status") # TODO: Check if the update has been installed, failed, behind, etc.
+    print("12. Get a clients update version")
     # print("-------------------------------------------------------------------------------------------")
-    # print("40. Change security status") # Changes if security is enabled or not (TESTING ONLY - would not be in a real application)
+    # print("20. Change the update file")
+    print("-------------------------------------------------------------------------------------------")
+    print("30. Return all clients information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
     print("-------------------------------------------------------------------------------------------")
 
     return input("Enter an option: ")
-
-# # Changes security status
-# def change_security_status() -> int:
-#     try:
-#         print(f"Current security status: {SECURITY_MODE}")
-#         new_security_mode = input("Enter a new security status (1 = Secure, 0 = Insecure): ")
-
-#         # Re-writes the CONSTANTS file with the new security mode
-#         # TESTIG ONLY
-#         # Would not be in a real application
-#         # Used so application does not need to be recompiled to change security mode
-#         with open('constants.py', 'r') as file:
-#             lines = file.readlines()
-#         with open('constatnts.py', 'w') as file:
-#             for line in lines:
-#                 if 'SECURITY_MODE' in line:
-#                     file.write(f'SECURITY_MODE = {new_security_mode}\n')
-#                 else:
-#                     file.write(line)
-
-#         return SUCCESS
-
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-#         return ERROR
 
 # Get a list of the clients in the database and their network information
 def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
@@ -145,55 +118,55 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         return STR_NONE, STR_NONE, ERROR
 
 # Gets the update readiness status from the client
-# def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
-#     try:
-#         vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
-#         if ret_val == ERROR:
-#             print("An error occurred while retrieving the client network information.")
-#             return BOOL_NONE, ERROR
+def get_client_update_readiness_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[bool, int]:
+    try:
+        vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
+            return BOOL_NONE, ERROR
         
-#         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
-#         if ret_val == CONNECTION_INITIATE_ERROR:
-#             print("Error: Connection initiation failed.")
-#             return BOOL_NONE, CONNECTION_INITIATE_ERROR
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return BOOL_NONE, CONNECTION_INITIATE_ERROR
 
-#         key = selector.get_key(connection_socket)
+        key = selector.get_key(connection_socket)
 
-#         key.data.identifier = identifier
+        key.data.identifier = identifier
 
-#         key.data.outb = UPDATE_READINESS_STATUS_REQUEST
+        key.data.outb = UPDATE_READINESS_STATUS_REQUEST
 
-#         response_event.clear()
-#         response_event.wait(timeout=None)
-#         if not response_event.is_set():
-#             print("Timeout waiting for client response.")
-#             return BOOL_NONE, CONNECTION_SERVICE_ERROR
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return BOOL_NONE, CONNECTION_SERVICE_ERROR
         
-#         update_readiness = response_data.get('update_readiness')
+        update_readiness = response_data.get('update_readiness')
 
-#         dotenv.load_dotenv()
-#         database = os.getenv("SERVER_DATABASE")
-#         db_connection = sqlite3.connect(database)
-#         cursor = db_connection.cursor()
-#         # Update poll time
-#         cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (vehicle_entry_id,)) # Uses the current timestamp to determine when version number was retrieved
-#         db_connection.commit()
-#         db_connection.close()
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        # Update poll time
+        cursor.execute("UPDATE vehicles SET last_poll_time = CURRENT_TIMESTAMP WHERE vehicles_entry_id = ?;", (vehicle_entry_id,)) # Uses the current timestamp to determine when version number was retrieved
+        db_connection.commit()
+        db_connection.close()
 
-#         if update_readiness == True:
-#             print("Client is ready to install the update.")
-#         elif update_readiness == False:
-#             print("Client is not ready to install the update.")
-#             return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
+        if update_readiness == True:
+            print("Client is ready to install the update.")
+        elif update_readiness == False:
+            print("Client is not ready to install the update.")
+            return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
         
-#         response_data.clear()  # Clear the response data for the next request
-#         response_event.clear() # Clear the event for the next request
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
 
-#         return update_readiness, SUCCESS
+        return update_readiness, SUCCESS
         
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-#         return BOOL_NONE, ERROR
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return BOOL_NONE, ERROR
     
 # Pushes an update to the client
 # Example when a new update comes out, the server will push the update to the client

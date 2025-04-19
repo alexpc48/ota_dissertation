@@ -31,10 +31,6 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     ret_val = download_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update downloaded successfully.")
-                    # elif ret_val == UPDATE_NOT_AVALIABLE:
-                    #     print("Error: No updates available to download.")
-                    # elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
-                    #     print("Error: Client is not ready to receive the update.")
                     elif ret_val == QUEUED_UPDATE_ERROR:
                         print("Error: There is an update already queued for install.")
                     else:
@@ -235,12 +231,13 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         # Retrieve symmetric encryption key based on the encryption algorithm
                         # Checks if security is turned on for the purposes of demonstration
                         # Would not be used in real application
+                        print("Retrieving encryption key ...")
                         encryption_key = BYTES_NONE
-                        if SECURITY_MODE == 1:
-                            db_connection = sqlite3.connect(database)
-                            cursor = db_connection.cursor()
-                            encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
-                            db_connection.close()
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1")).fetchone()[0]
+                        print("Encryption key retrieved successfully.")
+                        db_connection.close()
 
                         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
                         if ret_val == PAYLOAD_ENCRYPTION_ERROR:
