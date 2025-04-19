@@ -7,8 +7,6 @@ import platform
 from constants import *
 from functions import *
 
-# dotenv.load_dotenv(override=True)
-
 # Displays the options menu for client functions
 def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")

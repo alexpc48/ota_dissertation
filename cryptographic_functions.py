@@ -30,12 +30,12 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
         
         print("Payload encrypted.")
         # encrypted_payload += b'malicious_code' # Makes the authentication fail for the encrypted payload as tag was generated on the original encrypted payload
-        print("***********************************************")
-        print(f"Nonce: {nonce}")
-        print(f"Tag: {tag}")
-        print(f"Encrypted payload: {encrypted_payload}")
-        print(f"Encryption key: {encryption_key}")
-        print("***********************************************")
+        # print("***********************************************")
+        # print(f"Nonce: {nonce}")
+        # print(f"Tag: {tag}")
+        # print(f"Encrypted payload: {encrypted_payload}")
+        # print(f"Encryption key: {encryption_key}")
+        # print("***********************************************")
         return nonce, encrypted_payload, tag, SUCCESS
             
     except Exception as e:
@@ -47,12 +47,12 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
     try:
         print("Decrypting payload ...")
 
-        print("***********************************************")
-        print(f"Nonce: {nonce}")
-        print(f"Tag: {tag}")
-        print(f"Encrypted payload: {payload}")
-        print(f"Encryption key: {encryption_key}")
-        print("***********************************************")
+        # print("***********************************************")
+        # print(f"Nonce: {nonce}")
+        # print(f"Tag: {tag}")
+        # print(f"Encrypted payload: {payload}")
+        # print(f"Encryption key: {encryption_key}")
+        # print("***********************************************")
         if SECURITY_MODE == 0:
             decrypted_payload = payload
             print("No decryption needed.")

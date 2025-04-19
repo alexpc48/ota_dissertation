@@ -28,14 +28,23 @@ def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
 if __name__=='__main__':
 
     # Running on network OTA
-    server_ip, server_port = '192.168.225.97', 50097
-    windows_ip, windows_port = '192.168.225.150', 50150
-    linux_ip, linux_port = '192.168.225.69', 50069
+    # Pi as server
+    # server_ip, server_port = '192.168.225.97', 50097
+    # windows_ip, windows_port = '192.168.225.150', 50150
+    # linux_ip, linux_port = '192.168.225.69', 50069
+    # test_environment = False
+
+    # Running on network OTA
+    # Pi as a client
+    # linux_ip, linux_port = '192.168.225.97', 50097
+    # windows_ip, windows_port = '192.168.225.150', 50150
+    # server_ip, server_port = '192.168.225.69', 50069
 
     # Running on local machine (testing on development machine)
-    # server_ip, server_port = '127.0.0.1', 50097
-    # windows_ip, windows_port = '127.0.0.1', 50150
-    # linux_ip, linux_port = '127.0.0.1', 50069
+    server_ip, server_port = '127.0.0.1', 50097
+    windows_ip, windows_port = '127.0.0.1', 50150
+    linux_ip, linux_port = '127.0.0.1', 50069
+    test_environment = True
 
     # print("Removing old diagnostics file ...")
     # if os.path.exists('*diagnostics.txt'):
@@ -62,8 +71,7 @@ if __name__=='__main__':
         file6 = 'updates/daffy_duck.png'
     
     # Creates cryptographic material
-
-    # Ed25519 keys
+    # Ed25519 keys are used
     # Generates public and private keys for the server and clients
     server_eddsa_private_key = Ed25519PrivateKey.generate()
     server_eddsa_public_key = server_eddsa_private_key.public_key()
@@ -81,25 +89,29 @@ if __name__=='__main__':
 
     # Certificates and keys are pre-made and stored as files
     # In reality would be generated and signed by a CA
+    # Different certificates are used for network-based OTA and local OTA for testing to enable context.check_hostname to work
+    # New certificates were generated so the CN was 127.0.0.1 when in testing meaning not proper hostname checking as opposed to network-based OTA
     if os_type == "Windows":
         aes_128_windows_client, _ = get_update_file("cryptographic_material\\aes_128_windows_client.key")
         aes_256_windows_client, _ = get_update_file("cryptographic_material\\aes_256_windows_client.key")
         aes_128_linux_client, _ = get_update_file("cryptographic_material\\aes_128_linux_client.key")
         aes_256_linux_client, _ = get_update_file("cryptographic_material\\aes_256_linux_client.key")
         root_ca, _ = get_update_file("cryptographic_material\\root_ca.pem")
-        server_private_key, _ = get_update_file("cryptographic_material\\server_private_key.pem")
-        server_certificate, _ = get_update_file("cryptographic_material\\server_certificate.pem")
-        windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key.pem")
-        windows_client_certificate, _ = get_update_file("cryptographic_material\\windows_client_certificate.pem")
-        linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key.pem")
-        linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate.pem")
+        if test_environment == True:
+            server_private_key, _ = get_update_file("cryptographic_material\\server_private_key_local_host.pem")
+            server_certificate, _ = get_update_file("cryptographic_material\\server_certificate_local_host.pem")
+            windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key_local_host.pem")
+            windows_client_certificate, _ = get_update_file("cryptographic_material\\windows_client_certificate_local_host.pem")
+            linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key_local_host.pem")
+            linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate_local_host.pem")
+        else:
+            server_private_key, _ = get_update_file("cryptographic_material\\server_private_key.pem")
+            server_certificate, _ = get_update_file("cryptographic_material\\server_certificate.pem")
+            windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key.pem")
+            windows_client_certificate, _ = get_update_file("cryptographic_material\\windows_client_certificate.pem")
+            linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key.pem")
+            linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate.pem")
 
-        # aes_128_windows_client = aes_128_windows_client.decode('utf-8')
-        # aes_128_windows_client = aes_128_windows_client.encode('utf-8')
-        # aes_256_windows_client = aes_256_windows_client.decode('utf-8')
-        # aes_256_windows_client = aes_256_windows_client.encode('utf-8')
-        # aes_128_linux_client = aes_128_linux_client.decode('utf-8')
-        # aes_128_linux_client = aes_128_linux_client.encode('utf-8')
         root_ca = root_ca.decode('utf-8')
         root_ca = root_ca.encode('utf-8')
         server_private_key = server_private_key.decode('utf-8')
@@ -121,17 +133,22 @@ if __name__=='__main__':
         aes_128_linux_client, _ = get_update_file("cryptographic_material/aes_128_linux_client.key")
         aes_256_linux_client, _ = get_update_file("cryptographic_material/aes_256_linux_client.key")
         root_ca, _ = get_update_file("cryptographic_material/root_ca.pem")
-        server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
-        server_certificate, _ = get_update_file("cryptographic_material/server_certificate.pem")
-        windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key.pem")
-        windows_client_certificate, _ = get_update_file("cryptographic_material/windows_client_certificate.pem")
-        linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
-        linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
-        
-        # aes_128_windows_client, _ = convert_data_format(aes_128_windows_client)
-        # aes_256_windows_client, _ = convert_data_format(aes_256_windows_client)
-        # aes_128_linux_client, _ = convert_data_format(aes_128_linux_client)
-        # aes_256_linux_client, _ = convert_data_format(aes_256_linux_client)
+
+        if test_environment == True:
+            server_private_key, _ = get_update_file("cryptographic_material/server_private_key_local_host.pem")
+            server_certificate, _ = get_update_file("cryptographic_material/server_certificate_local_host.pem")
+            windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key_local_host.pem")
+            windows_client_certificate, _ = get_update_file("cryptographic_material/windows_client_certificate_local_host.pem")
+            linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key_local_host.pem")
+            linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate_local_host.pem")
+        else:
+            server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
+            server_certificate, _ = get_update_file("cryptographic_material/server_certificate.pem")
+            windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key.pem")
+            windows_client_certificate, _ = get_update_file("cryptographic_material/windows_client_certificate.pem")
+            linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key.pem")
+            linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate.pem")
+
         root_ca, _ = convert_data_format(root_ca)
         server_private_key, _ = convert_data_format(server_private_key)
         server_certificate, _ = convert_data_format(server_certificate)
@@ -141,11 +158,11 @@ if __name__=='__main__':
         linux_client_certificate, _ = convert_data_format(linux_client_certificate)
 
 
-    print("************************************************")
-    print(f"Server private key: {server_private_key}")
-    print(f"Windows client private key: {windows_client_private_key}")
-    print(f"Linux client private key: {linux_client_private_key}")
-    print("************************************************")
+    # print("************************************************")
+    # print(f"Server private key: {server_private_key}")
+    # print(f"Windows client private key: {windows_client_private_key}")
+    # print(f"Linux client private key: {linux_client_private_key}")
+    # print("************************************************")
 
     print("Example data prepared.")
 

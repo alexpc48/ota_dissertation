@@ -1,0 +1,49 @@
+Completed on my D:\ drive which has uses openssl.exe (in Windows cmd: set openssl="openssl.exe")
+
+# When doing for different environments, the CA must be different:
+# Pi is server:
+# Server SAN = 192.168.225.97
+# Windows SAN = 192.168.225.150
+# Linux SAN = 192.168.225.69
+echo subjectAltName=IP:192.168.225.97 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\server_private_key.pem
+openssl req -new -key D:\server_private_key.pem -out D:\server_certificate.csr
+openssl x509 -req -in D:\server_certificate.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\server_certificate.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+echo subjectAltName=IP:192.168.225.150 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\windows_client_private_key.pem
+openssl req -new -key D:\windows_client_private_key.pem -out D:\windows_client_certificate.csr
+openssl x509 -req -in D:\windows_client_certificate.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\windows_client_certificate.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+echo subjectAltName=IP:192.168.225.69 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\linux_client_private_key.pem
+openssl req -new -key D:\linux_client_private_key.pem -out D:\linux_client_certificate.csr
+openssl x509 -req -in D:\linux_client_certificate.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\linux_client_certificate.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+# Test environment:
+# All SANs = 127.0.0.1
+echo subjectAltName=IP:127.0.0.1 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\server_private_key_local_host.pem
+openssl req -new -key D:\server_private_key_local_host.pem -out D:\server_certificate_local_host.csr
+openssl x509 -req -in D:\server_certificate_local_host.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\server_certificate_local_host.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+echo subjectAltName=IP:127.0.0.1 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\windows_client_private_key_local_host.pem
+openssl req -new -key D:\windows_client_private_key_local_host.pem -out D:\windows_client_certificate_local_host.csr
+openssl x509 -req -in D:\windows_client_certificate_local_host.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\windows_client_certificate_local_host.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+echo subjectAltName=IP:127.0.0.1 > D:\ota_cert_conf.txt
+openssl genpkey -algorithm ed25519 -out D:\linux_client_private_key_local_host.pem
+openssl req -new -key D:\linux_client_private_key_local_host.pem -out D:\linux_client_certificate_local_host.csr
+openssl x509 -req -in D:\linux_client_certificate_local_host.csr -CA D:\root_ca.pem -CAkey D:\root_ca_private_key.pem -CAserial D:\root_ca.srl -out D:\linux_client_certificate_local_host.pem -extfile D:\ota_cert_conf.txt
+del D:\ota_cert_conf.txt
+
+# Pi is a client:
+# Server CN = 192.168.225.69
+# Windows CN = 192.168.225.150
+# Linux CN = 192.168.225.97

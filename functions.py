@@ -101,9 +101,10 @@ def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
             context.options |= ssl.OP_NO_TLSv1
             context.options |= ssl.OP_NO_TLSv1_1
             # Set ciphers for security
-            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            # Use only strong 128-bit+ ciphers | Exclude non-authentication ciphers | Exclude non-encryption ciphers | Exclude MD5 and SHA1 hashes | Exclude 3DES and RC4 ciphers
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
             context.verify_mode = ssl.CERT_REQUIRED
-            context.check_hostname = False # No hostnames in use, but real implementation would use hostnames
+            # context.check_hostname = True
             return context, SUCCESS
         elif mode == 'client':
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
@@ -111,9 +112,9 @@ def create_context(mode: str) -> typing.Tuple[ssl.SSLContext, int]:
             context.options |= ssl.OP_NO_SSLv3
             context.options |= ssl.OP_NO_TLSv1
             context.options |= ssl.OP_NO_TLSv1_1
-            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!3DES")
+            context.set_ciphers("HIGH:!aNULL:!eNULL:!MD5:!SHA1:!3DES:!RC4")
             context.verify_mode = ssl.CERT_REQUIRED
-            context.check_hostname = False
+            context.check_hostname = True
             return context, SUCCESS
         else:
             print("Invalid mode. Use 'server' or 'client'.")
@@ -303,7 +304,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 return None, None, CONNECTION_INITIATE_ERROR
 
         # TLS implementation
-        connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False) # Wraps the socket with TLS
+        connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False, server_hostname=host) # Wraps the socket with TLS
         while True:
             try:
                 # print("Performing TLS handshake ...")
@@ -462,7 +463,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             print("No data received.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
         print("Header received.")
-        print(f"Header: {header}")
+        # print(f"Header: {header}")
 
         # Continue if data is received
         # Data arrives as header -> nonce -> tag -> identifier -> payload
@@ -474,13 +475,15 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             if ret_val != SUCCESS:
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            print(f"Nonce: {nonce}")
+            # print(f"Nonce: {nonce}")
+            print("Nonce received.")
             print("Receiving tag ...")
             tag, ret_val = connection_receive(connection_socket, TAG_LENGTH)
             if ret_val != SUCCESS:
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            print(f"Tag: {tag}")
+            # print(f"Tag: {tag}")
+            print("Tag received.")
 
             print("Receiving identifier ...")
             identifier, ret_val = connection_receive(connection_socket, IDENTIFIER_LENGTH)
@@ -488,7 +491,8 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
             identifier = identifier.decode()
-            print(f"Identifier: {identifier}")
+            # print(f"Identifier: {identifier}")
+            print("Identifier received.")
 
             # Uses listening port to determine which database to use
             # Formatted queries acceptable since variables are not user input
@@ -523,7 +527,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             db_connection.close()
             print("Retrieved encryption key.")
 
-            print(f"Encryption key: {encryption_key}")
+            # print(f"Encryption key: {encryption_key}")
                     
             # Unpack the header
             print("Unpacking header ...")
@@ -596,7 +600,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 data_inb = payload[file_name_length:payload_length]
 
-            total_time = decrypt_stats['time'] + hash_stats.get('time', 0) + sign_stats.get('time', 0)
+            total_time = decrypt_stats['time'] + hash_stats.get('time', 0) + sign_stats.get('time', 0) # Default hash and signature times to 0 if the payload is not the update file
 
             # Use of ChatGPT for creating logging functionality
             with open(diagnostics_file, 'a') as f:
@@ -682,10 +686,10 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
-        print(f"Header: {header}")
-        print(f"Nonce: {nonce}")
-        print(f"Tag: {tag}")
-        print(f"Identifier: {identifier}")
+        # print(f"Header: {header}")
+        # print(f"Nonce: {nonce}")
+        # print(f"Tag: {tag}")
+        # print(f"Identifier: {identifier}")
 
         return data_to_send, SUCCESS
 
