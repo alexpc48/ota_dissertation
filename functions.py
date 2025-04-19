@@ -233,7 +233,7 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
     print("Timeout: No data received within 10 seconds.")
     return BYTES_NONE, TIMEOUT_ERROR
 
-# ChatGPT used
+# ChatGPT used to help create a metrics capture for security operations
 def measure_operation(process, func, *args, **kwargs):
     """Profile a specific function call and return result + diagnostics."""
     tracemalloc.start()
@@ -288,6 +288,25 @@ def log_section(name, stats, f):
     f.write(f"  Memory change (USS):         {stats['mem_uss']} bytes\n")
     f.write(f"  Python memory allocated:     {stats['py_mem']} bytes\n\n")
 
+def write_diagnostic_file(action: str, diagnostics_file: str, security_operations: dict) -> int:
+    total_time = decryption_stats['time'] + hash_verification_stats.get('time', 0) + signature_verification_stats.get('time', 0) # Default hash and signature times to 0 if the payload is not the update file
+
+    # Use of ChatGPT for creating logging functionality
+    with open(diagnostics_file, 'a') as f:
+        current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        f.write(f"----- {action} Diagnostics Log -----\n")
+        f.write(f"Date and Time: {current_time}\n")
+        f.write(f"--------------------------------------------\n")
+        f.write(f"------ Security Operation Diagnostics ------\n")
+        log_section("Decryption", decryption_stats, f)
+        log_section("Hash Verification", hash_verification_stats, f)
+        log_section("Signature Verification", signature_verification_stats, f)
+        f.write(f"Total time for security operations: {total_time:.9f} sec\n")
+        f.write(f"--------------------------------------------\n")
+        f.write(f"---------- End of diagnostics Log ----------\n\n\n\n")
+    print(f"Security checks completed in {total_time:.9f} seconds.")
+    return SUCCESS
+
 # Receives the payload from the socket
 def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
@@ -303,40 +322,33 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             print("No data received.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
         print("Header received.")
-        # print(f"Header: {header}")
 
         # Continue if data is received
         # Data arrives as header -> nonce -> tag -> identifier -> payload
         # Identifier not sensitive - in application could be the VIN of the vehicle
         if header:
-            # Receive the nonce and tag
+            # Receive other sub-header information
             print("Receiving nonce ...")
             nonce, ret_val = connection_receive(connection_socket, NONCE_LENGTH)
             if ret_val != SUCCESS:
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            # print(f"Nonce: {nonce}")
             print("Nonce received.")
             print("Receiving tag ...")
             tag, ret_val = connection_receive(connection_socket, TAG_LENGTH)
             if ret_val != SUCCESS:
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            # print(f"Tag: {tag}")
             print("Tag received.")
-
             print("Receiving identifier ...")
             identifier, ret_val = connection_receive(connection_socket, IDENTIFIER_LENGTH)
             if ret_val != SUCCESS:
                 print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
             identifier = identifier.decode()
-            # print(f"Identifier: {identifier}")
             print("Identifier received.")
 
             # Uses listening port to determine which database to use
-            # Formatted queries acceptable since variables are not user input
-            # Potential for risk identifier is captured and replayed as SQL injection attack
             _, port = LISTENING_SOCKET_INFO
             dotenv.load_dotenv()
             if port == SERVER_PORT:
@@ -357,7 +369,6 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
             # Retrieve symmetric encrypion key
             print(f"Retrieving encryption key from {database} ...")
-            print(encryption_query)
             db_connection = sqlite3.connect(database)
             cursor = db_connection.cursor()
             if port == SERVER_PORT:
@@ -366,8 +377,6 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 encryption_key = (cursor.execute(encryption_query)).fetchone()[0]
             db_connection.close()
             print("Retrieved encryption key.")
-
-            # print(f"Encryption key: {encryption_key}")
                     
             # Unpack the header
             print("Unpacking header ...")
@@ -378,7 +387,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             payload = BYTES_NONE # Initialise variable
             while len(payload) < payload_length:
                 try:
-                    chunk, ret_val = connection_receive(connection_socket, BYTES_TO_READ) # TODO: Check resource usage and compare between receiving all bytes at once or if splitting it up into 1024 is better for an embedded system
+                    chunk, ret_val = connection_receive(connection_socket, BYTES_TO_READ)
                     if ret_val != SUCCESS:
                         print("Error during connection receive.")
                         return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -396,18 +405,17 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             
             # TODO: Time all encompassing operations too, not just decryption and verification
             print("Timing security checks ...")
+            decryption_stats, hash_verification_stats, signature_verification_stats = {}
             process = psutil.Process(os.getpid())
-            (payload, ret_val), decrypt_stats = measure_operation(process, payload_decryption, payload, nonce, tag, encryption_key)
+            (payload, ret_val), decryption_stats = measure_operation(process, payload_decryption, payload, nonce, tag, encryption_key)
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
 
             file_name = payload[:file_name_length]
 
-            hash_stats = {}
-            sign_stats = {}
             if data_subtype == UPDATE_FILE:
-                (data_inb, ret_val), hash_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
+                (data_inb, ret_val), hash_verification_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
                     print("Hash is valid.")
                 elif INVALID_PAYLOAD_ERROR:
@@ -428,7 +436,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                     public_key = (cursor.execute(sign_query)).fetchone()[0]
                 db_connection.close()
 
-                ret_val, sign_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
+                ret_val, signature_verification_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
                 if ret_val == SUCCESS:
                     print("Signature is valid.")
                 elif SIGNATURE_INVALID_ERROR:
@@ -440,24 +448,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 data_inb = payload[file_name_length:payload_length]
 
-            total_time = decrypt_stats['time'] + hash_stats.get('time', 0) + sign_stats.get('time', 0) # Default hash and signature times to 0 if the payload is not the update file
-
-            # Use of ChatGPT for creating logging functionality
-            with open(diagnostics_file, 'a') as f:
-                current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                f.write(f"----- Received payload diagnostics Log -----\n")
-                f.write(f"Date and Time: {current_time}\n")
-                f.write(f"Using SECURITY_MODE: {SECURITY_MODE}\n")
-                f.write(f"--------------------------------------------\n")
-                f.write(f"------ Security Operation Diagnostics ------\n")
-                log_section("Decryption", decrypt_stats, f)
-                log_section("Hash Verification", hash_stats, f)
-                log_section("Signature Verification", sign_stats, f)
-                f.write(f"Total time for security operations: {total_time:.9f} sec\n")
-                f.write(f"--------------------------------------------\n")
-                f.write(f"---------- End of diagnostics Log ----------\n\n\n\n")
-
-            print(f"Security checks completed in {total_time:.9f} seconds.")
+            write_diagnostic_file('Receive Payload', diagnostics_file, decryption_stats, hash_verification_stats, signature_verification_stats)
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
@@ -526,10 +517,6 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
-        # print(f"Header: {header}")
-        # print(f"Nonce: {nonce}")
-        # print(f"Tag: {tag}")
-        # print(f"Identifier: {identifier}")
 
         return data_to_send, SUCCESS
 
