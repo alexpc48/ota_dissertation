@@ -28,8 +28,10 @@ def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
 if __name__=='__main__':
 
     print("Setting networking information ...")
-    # Change network information accordingly to use either on a custom local network, or on a singlular local machine
 
+
+    # Change network information accordingly to use either on a custom local network, or on a singlular local machine
+    # Change networking constants so ports match ones here
     # Running on network OTA
     # Pi as server
     # server_ip, server_port = '192.168.225.97', 50097
@@ -180,10 +182,6 @@ if __name__=='__main__':
         windows_client_certificate, _ = convert_data_format(windows_client_certificate)
         linux_client_private_key, _ = convert_data_format(linux_client_private_key)
         linux_client_certificate, _ = convert_data_format(linux_client_certificate)
-
-    print(server_certificate)
-    print(windows_client_certificate)
-    print(linux_client_certificate)   
 
     print("Example data prepared.")
 

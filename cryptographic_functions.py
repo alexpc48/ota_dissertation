@@ -196,8 +196,6 @@ def load_cryptographic_data(context: ssl.SSLContext, port: int) -> typing.Tuple[
         root_ca = root_ca.decode()
         db_connection.close()
 
-        print(connection_certificate)
-
         # Work around for having hardcoded certificate paths
         # Allows server and clients to use their respective certificates
         with open("connection_certificate.pem", "w", newline='') as connection_certificate_temp, open("connection_private_key.pem", "w", newline='') as connection_private_key_temp, open("root_ca.pem", "w", newline='') as root_ca_temp:

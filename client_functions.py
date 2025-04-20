@@ -21,6 +21,7 @@ def options_menu() -> str:
     print("20. Display the update readiness status")
     print("21. Display the update install status")
     print("22. Display the update version")
+    print("23. Display the update install time")
     print("-------------------------------------------------------------------------------------------")
     print("30. [DEMO] Rollback to the previous update")
     print("31. [DEMO] Change the update install readiness status")
