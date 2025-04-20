@@ -384,5 +384,23 @@ def get_client_update_install_status(selector: selectors.SelectSelector, respons
         return BYTES_NONE, ERROR
 
 # Adds the recevied update verison when it is pushed to the database
-def add_update_version_to_database(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
-    pass
+def add_update_version_to_database(identifier: str, version_number: str) -> int:
+    try:
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        update_id = cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (version_number,)).fetchone()[0] # Gets the corresponding update ID for the version number
+        if not update_id:
+            print(f"Error: Update version {version_number} does not exist in the database.")
+            return ERROR
+        cursor.execute("UPDATE vehicles SET update_id = ?, last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_id = ?", (update_id, identifier))
+        db_connection.commit()
+        db_connection.close()
+        
+        print("Database updated successfully.")
+        return SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR

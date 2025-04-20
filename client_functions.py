@@ -14,7 +14,7 @@ def options_menu() -> str:
     print("-------------------------------------------------------------------------------------------")
     print("1. Check for new updates")
     print("2. Download new updates")
-    print("3. Install downloaded updates") # TODO: Should tell the server the new version number and move the old update to a rollback table in the database
+    print("3. Install downloaded updates")
     # print("-------------------------------------------------------------------------------------------")
     # print("10. Change the update readiness status")
     print("-------------------------------------------------------------------------------------------")
@@ -22,7 +22,7 @@ def options_menu() -> str:
     print("21. Display the update install status")
     print("22. Display the update version")
     print("-------------------------------------------------------------------------------------------")
-    print("30. [DEMO] Rollback to the previous update") # TODO: Should display contents of rollback table and ask which version to go to
+    print("30. [DEMO] Rollback to the previous update")
     print("31. [DEMO] Change the update install readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
@@ -325,7 +325,6 @@ def write_update_file_to_database(update_file_name: str, file_data: bytes) -> in
         return DOWNLOAD_UPDATE_ERROR
     
 # Installs the update from the downloads buffer in the database
-# TODO: Respond to the server the new update version installed
 def install_update(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         # Checks if ready to install the update
@@ -378,7 +377,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
             os.remove(current_file_path)
             print(f"Previous update file removed from install location.")
         except Exception as e:
-            print(f"No previous update file to remove: {e}")
+            print(f"No previous update file to remove: {e}.") # Expected error if there is no old install file (happens on initialisation)
 
         file_path = os.path.join(INSTALL_LOCATION, update_file_name)
 
@@ -462,3 +461,63 @@ def get_all_information() -> typing.Tuple[str, str, str, int]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return STR_NONE, STR_NONE, ERROR
+
+# Asks the user which rollback update to install
+def rollback_update_install(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+    try:
+        database, ret_val = get_client_database()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return STR_NONE, ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        result = (cursor.execute("SELECT rollback_entry_id, update_version, update_file FROM rollback_data ORDER BY rollback_entry_id")).fetchall()
+        db_connection.close()
+        if not result:
+            print("No rollback updates available.")
+            return ERROR
+
+        print("Previous updates to rollback to from the database.")
+        print("-----------------------------------------")
+        for row in result:
+            print("Rollback Entry ID: ", row[0])
+            print("Update Version: ", row[1])
+            print("-----------------------------------------")
+        
+        rollback_version = int(input("Enter the ID to rollback to: "))
+
+        selected_rollback_version = next((v for v in result if v[0] == rollback_version), None)
+
+
+        # Queue the rollback as a download and then install it
+        ret_val = write_update_file_to_database(selected_rollback_version[1], selected_rollback_version[2]) # File name and data
+        if ret_val == SUCCESS:
+            print("Update file written to database successfully.")
+        elif ret_val == DOWNLOAD_UPDATE_ERROR:
+            print("Error: Failed to write update file to database.")
+            return DOWNLOAD_UPDATE_ERROR
+        else: # ERROR will be from getting database name
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return ERROR
+        
+        ret_val = install_update(selector, response_event, response_data)
+        if ret_val == SUCCESS:
+            print("Update installed successfully.")
+        elif ret_val == CLIENT_NOT_UPDATE_READY_ERROR:
+            print("Error: Client is not ready to receive the update.")
+            return CLIENT_NOT_UPDATE_READY_ERROR
+        elif ret_val == UPDATE_NOT_AVALIABLE_ERROR:
+            print("Error: There is no update queued for install.")
+            return UPDATE_NOT_AVALIABLE_ERROR
+        elif ret_val == UPDATE_INSTALL_ERROR:
+            print("Error: There was an error installing the udpate.")
+            return UPDATE_INSTALL_ERROR
+
+        return SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR

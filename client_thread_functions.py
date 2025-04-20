@@ -86,6 +86,15 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occured while checking the update version.")
                         print("Please check the logs for more details.")
 
+                case '30': # Rollback the update
+                    print("Rolling back the update ...")
+                    ret_val = rollback_update_install(selector, response_event, response_data)
+                    if ret_val == SUCCESS:
+                        print("Update rolled back successfully.")
+                    else:
+                        print("An error occurred while rolling back the update.")
+                        print("Please check the logs for more details.")
+
                 case '31': # Change the update readiness status
                     print("Changing the update readiness status ...")
                     ret_val = change_update_readiness()
