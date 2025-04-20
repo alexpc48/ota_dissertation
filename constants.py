@@ -68,9 +68,6 @@ TAG_LENGTH = 16
 NONCE_LENGTH = 16 # Standard default is 12 bytes for GCM, but used 16 bytes due to how nonce is generated in the code
 ENCRYPTION_ALGORITHM = 'aes_128' # aes_128, aes_256
 IDENTIFIER_LENGTH = 36
-SERVER_PORT = 50097
-WINDOWS_PORT = 50150
-LINUX_PORT = 50069
 SECURITY_MODE = 1 # 1 = Secure, 0 = Insecure - Used for demonstration purposes
 HASH_SIZE = 64 # SHA256 hash size in bytes
 ED25591_SIGNATURE_SIZE = 64
@@ -83,3 +80,8 @@ UPDATE_INSTALLED = b'10020'
 UPDATE_IN_DOWNLOADS = b'10021'
 INSTALL_STATUS_REQUEST = b'10022'
 INSTALL_LOCATION = 'install_location'
+
+# Networking constants
+SERVER_PORT = 50069
+WINDOWS_PORT = 50150
+LINUX_PORT = 50097
