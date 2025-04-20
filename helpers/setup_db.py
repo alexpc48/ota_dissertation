@@ -32,24 +32,26 @@ if __name__=='__main__':
 
     # Running on network OTA
     # Pi as server
-    # server_ip, server_port = '192.168.225.97', 50097
-    # windows_ip, windows_port = '192.168.225.150', 50150
-    # linux_ip, linux_port = '192.168.225.69', 50069
-    # test_environment = False
+    server_ip, server_port = '192.168.225.97', 50097
+    windows_ip, windows_port = '192.168.225.150', 50150
+    linux_ip, linux_port = '192.168.225.69', 50069
+    test_environment = False
+    pi_is_client = False
 
     # Running on network OTA
     # Pi as a client
-    linux_ip, linux_port = '192.168.225.97', 50097
-    windows_ip, windows_port = '192.168.225.150', 50150
-    server_ip, server_port = '192.168.225.69', 50069
-    test_environment = False
-    pi_is_client = True
+    # linux_ip, linux_port = '192.168.225.97', 50097
+    # windows_ip, windows_port = '192.168.225.150', 50150
+    # server_ip, server_port = '192.168.225.69', 50069
+    # test_environment = False
+    # pi_is_client = True
     
     # Running on local machine (testing on development machine)
     # server_ip, server_port = '127.0.0.1', 50097
     # windows_ip, windows_port = '127.0.0.1', 50150
     # linux_ip, linux_port = '127.0.0.1', 50069
     # test_environment = True
+    # pi_is_client = False
 
     print("Networking information set.")
 
@@ -100,6 +102,7 @@ if __name__=='__main__':
         aes_256_linux_client, _ = get_update_file("cryptographic_material\\aes_256_linux_client.key")
         root_ca, _ = get_update_file("cryptographic_material\\root_ca.pem")
         if test_environment == True:
+            print("Test environment")
             server_private_key, _ = get_update_file("cryptographic_material\\server_private_key_local_host.pem")
             server_certificate, _ = get_update_file("cryptographic_material\\server_certificate_local_host.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key_local_host.pem")
@@ -107,6 +110,7 @@ if __name__=='__main__':
             linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key_local_host.pem")
             linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate_local_host.pem")
         elif test_environment == False and pi_is_client == True:
+            print("Pi is client")
             server_private_key, _ = get_update_file("cryptographic_material\\server_private_key_pi_client.pem")
             server_certificate, _ = get_update_file("cryptographic_material\\server_certificate_pi_client.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key_pi_client.pem")
@@ -114,6 +118,7 @@ if __name__=='__main__':
             linux_client_private_key, _ = get_update_file("cryptographic_material\\linux_client_private_key_pi_client.pem")
             linux_client_certificate, _ = get_update_file("cryptographic_material\\linux_client_certificate_pi_client.pem")
         else:
+            print("Pi is server")
             server_private_key, _ = get_update_file("cryptographic_material\\server_private_key.pem")
             server_certificate, _ = get_update_file("cryptographic_material\\server_certificate.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material\\windows_client_private_key.pem")
@@ -144,6 +149,7 @@ if __name__=='__main__':
         root_ca, _ = get_update_file("cryptographic_material/root_ca.pem")
 
         if test_environment == True:
+            print("Test environment")
             server_private_key, _ = get_update_file("cryptographic_material/server_private_key_local_host.pem")
             server_certificate, _ = get_update_file("cryptographic_material/server_certificate_local_host.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key_local_host.pem")
@@ -151,6 +157,7 @@ if __name__=='__main__':
             linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key_local_host.pem")
             linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate_local_host.pem")
         elif test_environment == False and pi_is_client == True:
+            print("Pi is client")
             server_private_key, _ = get_update_file("cryptographic_material/server_private_key_pi_client.pem")
             server_certificate, _ = get_update_file("cryptographic_material/server_certificate_pi_client.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key_pi_client.pem")
@@ -158,6 +165,7 @@ if __name__=='__main__':
             linux_client_private_key, _ = get_update_file("cryptographic_material/linux_client_private_key_pi_client.pem")
             linux_client_certificate, _ = get_update_file("cryptographic_material/linux_client_certificate_pi_client.pem")
         else:
+            print("Pi is server")
             server_private_key, _ = get_update_file("cryptographic_material/server_private_key.pem")
             server_certificate, _ = get_update_file("cryptographic_material/server_certificate.pem")
             windows_client_private_key, _ = get_update_file("cryptographic_material/windows_client_private_key.pem")
@@ -172,6 +180,10 @@ if __name__=='__main__':
         windows_client_certificate, _ = convert_data_format(windows_client_certificate)
         linux_client_private_key, _ = convert_data_format(linux_client_private_key)
         linux_client_certificate, _ = convert_data_format(linux_client_certificate)
+
+    print(server_certificate)
+    print(windows_client_certificate)
+    print(linux_client_certificate)   
 
     print("Example data prepared.")
 

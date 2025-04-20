@@ -131,8 +131,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
 
         print("Waiting for TLS handshake ...")
-        ret_val = wait_for_TLS_handshake(connection_socket, selector)
-        # (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
+        # ret_val = wait_for_TLS_handshake(connection_socket, selector)
+        (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return ERROR

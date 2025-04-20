@@ -1,4 +1,5 @@
 Completed on my D:\ drive which has uses openssl.exe (in Windows cmd: set openssl="openssl.exe")
+openssl x509 -in <certificate_file.pem> -noout -text
 
 # When doing for different environments, the CA must be different:
 # Pi is server:
