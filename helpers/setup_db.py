@@ -39,15 +39,16 @@ if __name__=='__main__':
 
     # Running on network OTA
     # Pi as a client
-    # linux_ip, linux_port = '192.168.225.97', 50097
-    # windows_ip, windows_port = '192.168.225.150', 50150
-    # server_ip, server_port = '192.168.225.69', 50069
-
+    linux_ip, linux_port = '192.168.225.97', 50097
+    windows_ip, windows_port = '192.168.225.150', 50150
+    server_ip, server_port = '192.168.225.69', 50069
+    test_environment = False
+    
     # Running on local machine (testing on development machine)
-    server_ip, server_port = '127.0.0.1', 50097
-    windows_ip, windows_port = '127.0.0.1', 50150
-    linux_ip, linux_port = '127.0.0.1', 50069
-    test_environment = True
+    # server_ip, server_port = '127.0.0.1', 50097
+    # windows_ip, windows_port = '127.0.0.1', 50150
+    # linux_ip, linux_port = '127.0.0.1', 50069
+    # test_environment = True
 
     print("Networking information set.")
 
