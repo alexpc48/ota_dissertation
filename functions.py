@@ -93,11 +93,24 @@ def create_listening_socket(host: str, port: int, selector: selectors.SelectSele
 # Accepts new connections
 def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelector) -> int:
     try:
+        start_time = time.perf_counter()
+        
         print("Accepting new connection ...")
+        _, listening_port = LISTENING_SOCKET_INFO
+        if listening_port == SERVER_PORT:
+            diagnostics_file = "server_diagnostics.txt"
+        elif listening_port == WINDOWS_PORT:
+            diagnostics_file = "windows_client_diagnostics.txt"
+        elif listening_port == LINUX_PORT:
+            diagnostics_file = "linux_client_diagnostics.txt"
+
+        print("Timing TLS implementation ...")
+        process = psutil.Process(os.getpid())
+        context_creation_stats, socket_wrap_stats, tls_handshake_stats = {}, {} , {}
 
         # Context configuration
         _, listening_port = LISTENING_SOCKET_INFO # Format = host, port
-        context, ret_val = create_context('server', listening_port)
+        (context, ret_val), context_creation_stats = measure_operation(process, create_context, 'server', listening_port)
         if ret_val == ERROR:
             print("Error creating context.")
             return ERROR
@@ -107,7 +120,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         connection_socket.setblocking(False)
 
         # Wrap the socket with TLS
-        connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
+        # connection_socket = context.wrap_socket(connection_socket, server_side=True, do_handshake_on_connect=False)
+        (connection_socket), socket_wrap_stats = measure_operation(process, context.wrap_socket, connection_socket, server_side=True, do_handshake_on_connect=False)
 
         # Register the connection with the selector
         data = types.SimpleNamespace(address=address, inb=BYTES_NONE, outb=BYTES_NONE, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
@@ -118,10 +132,18 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
 
         print("Waiting for TLS handshake ...")
         ret_val = wait_for_TLS_handshake(connection_socket, selector)
+        # (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return ERROR
         print("TLS handshake successful.")
+
+        end_time = time.perf_counter()
+        print(f"Accepting connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
+        print("Writing diagnostics ...")
+        security_operations = [context_creation_stats, socket_wrap_stats, tls_handshake_stats]
+        _ = write_diagnostic_file('Acceppting connection', diagnostics_file, security_operations)
+        print("Diagnostics written.")
 
         return SUCCESS
     
@@ -133,11 +155,23 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
 # Creates a connection to an endpoint
 def create_connection(host: str, port: int, selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
+        start_time = time.perf_counter()
+
         print(f"Initiating connection to {host}:{port} ...")
-        
+        _, listening_port = LISTENING_SOCKET_INFO
+        if listening_port == SERVER_PORT:
+            diagnostics_file = "server_diagnostics.txt"
+        elif listening_port == WINDOWS_PORT:
+            diagnostics_file = "windows_client_diagnostics.txt"
+        elif listening_port == LINUX_PORT:
+            diagnostics_file = "linux_client_diagnostics.txt"
+
+        process = psutil.Process(os.getpid())
+        context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats = {}, {} , {}, {}
+
         # Context configuration
         _, listening_port = LISTENING_SOCKET_INFO
-        context, ret_val = create_context('client', listening_port)
+        (context, ret_val), context_creation_stats = measure_operation(process, create_context, 'client', listening_port)
         if ret_val == ERROR:
             print("Error creating context.")
             return ERROR
@@ -178,11 +212,13 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 return None, None, CONNECTION_INITIATE_ERROR
 
         # Wrap socket with TSL
-        connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False, server_hostname=host) # Wraps the socket with TLS
+        # connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False, server_hostname=host) # Wraps the socket with TLS
+        (connection_socket), socket_wrap_stats = measure_operation(process, context.wrap_socket, connection_socket, do_handshake_on_connect=False, server_hostname=host) 
         print("Initiating TLS handshake ...")
         while True:
             try:
-                connection_socket.do_handshake()
+                connection_socket.do_handshake() # Can't measure the performance of this due to non-blocking nature
+                # do_tls_handshake_stats = measure_operation(process, connection_socket.do_handshake)
                 data.outb = HANDSHAKE_COMPLETE
                 break
             except ssl.SSLWantReadError:
@@ -202,11 +238,19 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         print("Socket registered.")
 
         print("Waiting for TLS handshake ...")
-        ret_val = wait_for_TLS_handshake(connection_socket, selector)
+        # ret_val = wait_for_TLS_handshake(connection_socket, selector)
+        (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return ERROR
         print("TLS handshake successful.")
+
+        end_time = time.perf_counter()
+        print(f"Creating connection completed in {end_time - start_time - timeout_interval:.9f} seconds.") # - timeout_interval accounts for the random sleep time
+        print("Writing diagnostics ...")
+        security_operations = [context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats]
+        _ = write_diagnostic_file('Creating Connection', diagnostics_file, security_operations)
+        print("Diagnostics written.")
 
         return selector, connection_socket, SUCCESS
     
@@ -235,7 +279,6 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
 
 # ChatGPT used to help create a metrics capture for security operations
 def measure_operation(process, func, *args, **kwargs):
-    """Profile a specific function call and return result + diagnostics."""
     tracemalloc.start()
     snapshot_start = tracemalloc.take_snapshot()
 
@@ -264,6 +307,7 @@ def measure_operation(process, func, *args, **kwargs):
     tracemalloc.stop()
 
     return result, {
+        "operation": func.__name__,
         "time": elapsed_time,
         "cpu_user": cpu_user,
         "cpu_sys": cpu_sys,
@@ -277,7 +321,7 @@ def measure_operation(process, func, *args, **kwargs):
 
 def log_section(name, stats, f):
     if not stats: return
-    f.write(f"{name}:\n")
+    f.write(f"\n----- {name} Diagnostics -----\n")
     f.write(f"  Time:                        {stats['time']:.9f} sec\n")
     f.write(f"  CPU time (user):             {stats['cpu_user']:.9f} sec\n")
     f.write(f"  CPU time (system):           {stats['cpu_sys']:.9f} sec\n")
@@ -289,27 +333,29 @@ def log_section(name, stats, f):
     f.write(f"  Python memory allocated:     {stats['py_mem']} bytes\n\n")
 
 def write_diagnostic_file(action: str, diagnostics_file: str, security_operations: dict) -> int:
-    total_time = decryption_stats['time'] + hash_verification_stats.get('time', 0) + signature_verification_stats.get('time', 0) # Default hash and signature times to 0 if the payload is not the update file
+    total_time = 0
+    for security_operation in security_operations:
+        if security_operation:
+            total_time += security_operation['time']
 
-    # Use of ChatGPT for creating logging functionality
     with open(diagnostics_file, 'a') as f:
         current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         f.write(f"----- {action} Diagnostics Log -----\n")
         f.write(f"Date and Time: {current_time}\n")
         f.write(f"--------------------------------------------\n")
-        f.write(f"------ Security Operation Diagnostics ------\n")
-        log_section("Decryption", decryption_stats, f)
-        log_section("Hash Verification", hash_verification_stats, f)
-        log_section("Signature Verification", signature_verification_stats, f)
+        f.write(f"------ Operation Diagnostics ------\n")
+        for security_operation in security_operations:
+            if security_operation:
+                log_section(security_operation['operation'], security_operation, f)
         f.write(f"Total time for security operations: {total_time:.9f} sec\n")
         f.write(f"--------------------------------------------\n")
         f.write(f"---------- End of diagnostics Log ----------\n\n\n\n")
-    print(f"Security checks completed in {total_time:.9f} seconds.")
     return SUCCESS
 
 # Receives the payload from the socket
 def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
+        start_time = time.perf_counter()
         file_name = BYTES_NONE # Initialise variable
 
         # Read the packet header
@@ -403,10 +449,10 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 payload += chunk
             print("Payload received.")
             
-            # TODO: Time all encompassing operations too, not just decryption and verification
             print("Timing security checks ...")
-            decryption_stats, hash_verification_stats, signature_verification_stats = {}
             process = psutil.Process(os.getpid())
+            decryption_stats, hash_verification_stats, signature_verification_stats = {}, {} , {}
+
             (payload, ret_val), decryption_stats = measure_operation(process, payload_decryption, payload, nonce, tag, encryption_key)
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
@@ -448,7 +494,12 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 data_inb = payload[file_name_length:payload_length]
 
-            write_diagnostic_file('Receive Payload', diagnostics_file, decryption_stats, hash_verification_stats, signature_verification_stats)
+            end_time = time.perf_counter()
+            print(f"Receiving payload completed in {end_time - start_time:.9f} seconds.")
+            print("Writing diagnostics ...")
+            security_operations = [decryption_stats, hash_verification_stats, signature_verification_stats]
+            _ = write_diagnostic_file('Receiving Payload', diagnostics_file, security_operations)
+            print("Diagnostics written.")
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
@@ -459,15 +510,20 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
 def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
+        start_time = time.perf_counter()
+
         # Query for getting relevant database
         dotenv.load_dotenv()
         _, port = LISTENING_SOCKET_INFO
         if port == SERVER_PORT:
             database = os.getenv("SERVER_DATABASE")
+            diagnostics_file = "server_diagnostics.txt"
         elif port == WINDOWS_PORT:
             database = os.getenv("WINDOWS_CLIENT_DATABASE")
+            diagnostics_file = "windows_client_diagnostics.txt"
         elif port == LINUX_PORT:
             database = os.getenv("LINUX_CLIENT_DATABASE")
+            diagnostics_file = "linux_client_diagnostics.txt"
 
         # Gets the endpoints identifier
         db_connection = sqlite3.connect(database)
@@ -487,10 +543,15 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
 
         payload = file_name + data_to_send
 
+        print("Timing security implementation ...")
+        process = psutil.Process(os.getpid())
+        encryption_stats, hash_generation_stats, signature_generation_stats = {}, {} , {}
+
         # Security relating to update files, not response or request communications
         if data_subtype == UPDATE_FILE:
             update_file = data_to_send
             update_file_hash, ret_val = generate_hash(update_file)
+            (update_file_hash, ret_val), hash_generation_stats = measure_operation(process, generate_hash, update_file)
             if ret_val == ERROR:
                 print("Error during hash generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
@@ -501,12 +562,12 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             private_key = (cursor.execute(f"SELECT {SIGNATURE_ALGORITHM}_private_key FROM cryptographic_data WHERE cryptographic_entry_id = 1")).fetchone()[0]
             db_connection.close()
 
-            payload, ret_val = generate_signature(payload, private_key)
+            (payload, ret_val), signature_generation_stats = measure_operation(process, generate_signature, payload, private_key)
             if ret_val == ERROR:
                 print("Error during signature generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
                     
-        nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
+        (nonce, encrypted_payload, tag, ret_val), encryption_stats = measure_operation(process, payload_encryption, payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
@@ -517,6 +578,13 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
+
+        end_time = time.perf_counter()
+        print(f"Creating payload completed in {end_time - start_time:.9f} seconds.")
+        print("Writing diagnostics ...")
+        security_operations = [encryption_stats, hash_generation_stats, signature_generation_stats]
+        _ = write_diagnostic_file('Creating Payload', diagnostics_file, security_operations)
+        print("Diagnostics written.")
 
         return data_to_send, SUCCESS
 
