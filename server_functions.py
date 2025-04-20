@@ -19,7 +19,7 @@ def options_menu() -> str:
     # print("-------------------------------------------------------------------------------------------")
     # print("20. Change the update file")
     print("-------------------------------------------------------------------------------------------")
-    print("30. Return all client information")
+    print("20. Return all client information")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")

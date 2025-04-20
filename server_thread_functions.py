@@ -87,7 +87,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occurred while getting the clients update version.")
                         print("Please check the logs for more details.")
 
-                case '30': # Poll all clients
+                case '20': # Poll all clients
                     print("Polling all clients ...")
                     client_poll_information, ret_val = poll_all_clients(selector, response_event, response_data)
                     if ret_val == SUCCESS:
