@@ -16,6 +16,7 @@ DEL /Q server.exe
 DEL /Q server_ota_updates.db
 DEL /Q client_linux_ota_updates.db
 DEL /Q client_windows_ota_updates.db
+RMDIR /S /Q install_location
 
 REM Setup new databases
 ECHO Setting up new databases...

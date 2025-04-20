@@ -14,12 +14,12 @@ def options_menu() -> str:
     print("1. Push the latest update to a client")
     print("-------------------------------------------------------------------------------------------")
     print("10. Get a clients update install readiness status")
-    print("11. Get a clients update install status") # TODO: Check if the update has been installed, failed, behind, etc.
+    print("11. Get a clients update install status")
     print("12. Get a clients installed update version")
     # print("-------------------------------------------------------------------------------------------")
     # print("20. Change the update file")
     print("-------------------------------------------------------------------------------------------")
-    print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
+    print("30. Return all client information")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
@@ -236,15 +236,28 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return STR_NONE, BYTES_NONE, ERROR
-    
-# TODO: Should check if the latest update is installed or not on the client (compaing server local db)
-def check_for_updates() -> typing.Tuple[bool, bytes]:
-    if True:
-        update_available = True
-        update_available_bytes = UPDATE_AVALIABLE
-    else:
+
+# Compares the latest update version against the one stored for the client
+def check_for_updates(identifier: str) -> typing.Tuple[bool, bytes]:
+
+    dotenv.load_dotenv()
+    database = os.getenv("SERVER_DATABASE")
+    db_connection = sqlite3.connect(database)
+    cursor = db_connection.cursor()
+    latest_update_version = cursor.execute("SELECT update_version FROM updates ORDER BY update_id DESC LIMIT 1").fetchone()[0]
+    client_update_version = cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()[0]
+    db_connection.close()
+
+    # Compare the versions
+    if client_update_version == latest_update_version:
+        print("Client is up to date.")
         update_available = False
         update_available_bytes = UPDATE_NOT_AVALIABLE
+    else:
+        print("Client is not up to date.")
+        update_available = True
+        update_available_bytes = UPDATE_AVALIABLE
+
     return update_available, update_available_bytes
 
 # Polls all available clients for an information table
@@ -270,8 +283,8 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
                 db_connection = sqlite3.connect(database)
                 cursor = db_connection.cursor()
                 # Retrieve update version and readiness status from the database for the given identifier
-                result = cursor.execute("SELECT update_readiness_status, updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()
-                update_readiness_status, update_version = result[0], result[1]
+                result = cursor.execute("SELECT update_readiness_status, update_install_status updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()
+                update_readiness_status, update_install_status, update_version = result[0], result[1], result[2]
                 last_poll_time = cursor.execute("SELECT last_poll_time FROM vehicles WHERE vehicle_id = ?", (identifier,)).fetchone()[0]
                 db_connection.close()
                 # Convert to datetime object
@@ -318,3 +331,58 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
     except Exception as e:
         print(f"An error occurred: {e}")
         return None, ERROR
+
+# Gets the clients current update install status
+def get_client_update_install_status(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[str, int]:
+    try:
+        _, identifier, client_host, client_port, ret_val = get_client_network_information()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
+            return STR_NONE, ERROR
+        
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return STR_NONE, CONNECTION_INITIATE_ERROR
+
+        key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
+
+        key.data.outb = INSTALL_STATUS_REQUEST
+
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for client response.")
+            return STR_NONE, CONNECTION_SERVICE_ERROR
+        
+        update_install_status = response_data.get('update_install_status')
+
+        if update_install_status == UPDATE_INSTALLED:
+            update_install_status_bool = True # True as all updates are installed
+        elif update_install_status == UPDATE_IN_DOWNLOADS:
+            update_install_status_bool = False
+
+        # Add value to database and update last poll time
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        cursor.execute("UPDATE vehicles SET update_install_status = ?, last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_id = ?;", (update_install_status_bool, identifier))
+        db_connection.commit()
+        db_connection.close()
+            
+
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
+
+        return update_install_status, SUCCESS
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return BYTES_NONE, ERROR
+
+# Adds the recevied update verison when it is pushed to the database
+def add_update_version_to_database(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
+    pass

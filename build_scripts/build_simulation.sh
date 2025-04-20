@@ -8,7 +8,7 @@ helpers_dir="$root_dir/helpers"
 # Clean tree of old build files
 cd "$root_dir"
 echo "Cleaning up old build files..."
-rm -rf build/
+rm -rf build/ install_location/
 rm -f client.exe.spec server.exe.spec client.exe server.exe
 rm -f server_ota_updates.db client_linux_ota_updates.db client_windows_ota_updates.db
 

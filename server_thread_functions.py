@@ -36,6 +36,31 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occurred while getting the clients update readiness status.")
                         print("Please check the logs for more details.")
                 
+                case '11': # Check client for update install status
+                    print("Checking client for update install status ...")
+                    update_install_status, ret_val = get_client_update_install_status(selector, response_event, response_data)
+                    if ret_val == SUCCESS and update_install_status == UPDATE_INSTALLED:
+                        print("Client has all updates installed.")
+                    elif ret_val == SUCCESS and update_install_status == UPDATE_IN_DOWNLOADS:
+                        print("Client has an update queued in its downloads. Please install the update.")
+                    elif ret_val == CONNECTION_INITIATE_ERROR:
+                        print("Error: Client not online. Please try again later.")
+                        # Gets the last update installed status that was polled
+                        dotenv.load_dotenv()
+                        database = os.getenv("SERVER_DATABASE")
+                        db_connection = sqlite3.connect(database)
+                        cursor = db_connection.cursor()
+                        result = (cursor.execute("SELECT update_install_status, last_poll_time FROM vehicles WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone()
+                        update_install_status, last_poll_time = result[0], result[1]
+                        db_connection.close()
+                        last_poll_time = datetime.datetime.strptime(last_poll_time, "%Y-%m-%d %H:%M:%S").strftime("%d-%m-%Y %H:%M:%S")
+                        # Displays the last known update version if poll fails
+                        print(f"Last polled update install status for '{identifier}': {update_install_status}")
+                        print(f"Last poll time: {last_poll_time}")
+                    else:
+                        print("An error occurred while getting the clients update install status.")
+                        print("Please check the logs for more details.")
+                
                 case '12': # Get the clients current update version
                     print("Getting the clients current update version ...")
                     identifier, client_update_version, ret_val = get_client_update_version(selector, response_event, response_data)
@@ -54,6 +79,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         result = (cursor.execute("SELECT updates.update_version, vehicles.last_poll_time FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone()
                         client_update_version, last_poll_time = result[0], result[1]
                         db_connection.close()
+                        last_poll_time = datetime.datetime.strptime(last_poll_time, "%Y-%m-%d %H:%M:%S").strftime("%d-%m-%Y %H:%M:%S")
                         # Displays the last known update version if poll fails
                         print(f"Last polled update version for '{identifier}': {client_update_version}")
                         print(f"Last poll time: {last_poll_time}")
@@ -164,7 +190,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         if key.data.inb == UPDATE_CHECK_REQUEST:
                             print("Update check request received.")
                             print("Checking for new updates ...")
-                            update_available, update_available_bytes = check_for_updates()
+                            update_available, update_available_bytes = check_for_updates(key.data.identifier)
                             if update_available == True:
                                 print("New update available.")
                                 key.data.outb = update_available_bytes
@@ -180,6 +206,14 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                                 return ERROR
                             key.data.outb = file_data
                             key.data.data_subtype = UPDATE_FILE
+                        
+                        elif key.data.inb == UPDATE_IN_DOWNLOADS:
+                            print("Client has an update queued in downloads.")
+                            response_data["update_install_status"] = UPDATE_IN_DOWNLOADS
+                        
+                        elif key.data.inb == UPDATE_INSTALLED:
+                            print("Update has all its updates installed.")
+                            response_data["update_install_status"] = UPDATE_INSTALLED
 
                         elif key.data.inb == UPDATE_READY:
                             print("The client is ready to install the update.")
@@ -195,6 +229,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             elif data_subtype == ALL_INFORMATION:
                                 print("All information received.")
                                 response_data["all_information"] = [key.data.file_name.decode(), key.data.inb[:5], key.data.inb[5:]]
+                            elif data_subtype == UPDATE_VERSION_PUSH:
+                                print("Update version pushed.")
+                                add_update_version_to_database(key.data.identifier, key.data.inb.decode())
                             key.data.outb = DATA_RECEIVED_ACK
 
                         if key.data.inb == DATA_RECEIVED_ACK:
@@ -234,7 +271,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
                         
-                        print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        # print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        print(f"Sending data to {remote_host}:{remote_port}")
                         while payload:
                             sent = connection_socket.send(payload)
                             payload = payload[sent:]

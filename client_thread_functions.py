@@ -52,17 +52,6 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occurred while installing the update.")
                         print("Please check the logs for more details.")
 
-                case '10': # Change the update readiness status
-                    print("Changing the update readiness status ...")
-                    ret_val = change_update_readiness()
-                    if ret_val == SUCCESS:
-                        print("Update readiness status changed successfully.")
-                    elif ret_val == UPDATE_STATUS_REPEAT_ERROR:
-                        print("Error: Update readiness status is already set to the same value.")
-                    else:
-                        print("An error occured while changing the update readiness status.")
-                        print("Please check the logs for more details.")
-
                 case '20': # Check the update readiness
                     print("Displaying the update readiness status ...")
                     update_readiness_status, _, ret_val = check_update_readiness_status()
@@ -75,6 +64,18 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("An error occured while checking the update readiness status.")
                         print("Please check the logs for more details.")
 
+                case '21': # Check the installation status
+                    print("Displaying the installation status ...")
+                    ret_val = check_update_in_downloads_buffer()
+                    if ret_val == QUEUED_UPDATE_ERROR:
+                        print("There is an update in the downloads buffer.")
+                    elif ret_val == SUCCESS:
+                        print("All updates have been installed.")
+                    else:
+                        print("An error occurred while checking the downloads buffer.")
+                        print("Please check the logs for more details.")
+                        return ERROR
+
                 case '22': # Displays the current update version installed
                     print("Displaying the update version ...")
                     update_version, _, ret_val = get_update_version()
@@ -83,6 +84,17 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("Update version checked successfully.")
                     else:
                         print("An error occured while checking the update version.")
+                        print("Please check the logs for more details.")
+
+                case '31': # Change the update readiness status
+                    print("Changing the update readiness status ...")
+                    ret_val = change_update_readiness()
+                    if ret_val == SUCCESS:
+                        print("Update readiness status changed successfully.")
+                    elif ret_val == UPDATE_STATUS_REPEAT_ERROR:
+                        print("Error: Update readiness status is already set to the same value.")
+                    else:
+                        print("An error occured while changing the update readiness status.")
                         print("Please check the logs for more details.")
 
                 case '98': # Redisplay the options menu
@@ -191,6 +203,19 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = update_version_bytes
                             key.data.data_subtype = UPDATE_VERSION
 
+                        elif key.data.inb == INSTALL_STATUS_REQUEST:
+                            print("Installation status request received.")
+                            print("Retrieving the installation status ...")
+                            ret_val = check_update_in_downloads_buffer()
+                            if ret_val == QUEUED_UPDATE_ERROR:
+                                key.data.outb = UPDATE_IN_DOWNLOADS
+                            elif ret_val == SUCCESS:
+                                key.data.outb = UPDATE_INSTALLED
+                            else:
+                                print("An error occurred while checking the downloads buffer.")
+                                print("Please check the logs for more details.")
+                                return ERROR
+
                         elif key.data.inb == ALL_INFORMATION_REQUEST:
                             print("All information request received.")
                             print("Retrieving all information ...")
@@ -259,7 +284,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             print("Error: Failed to create payload.")
                             return PAYLOAD_CREATION_ERROR
                         
-                        print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        # print(f"Sending data {payload} to {remote_host}:{remote_port} ...")
+                        print(f"Sending data to {remote_host}:{remote_port}")
                         while payload:
                             sent = connection_socket.send(payload)
                             payload = payload[sent:]

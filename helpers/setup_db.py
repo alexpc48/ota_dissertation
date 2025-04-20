@@ -179,6 +179,7 @@ if __name__=='__main__':
                     vehicles_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vehicle_id TEXT,
                     update_readiness_status BOOLEAN,
+                    update_install_status BOOLEAN,
                     update_id INTEGER REFERENCES updates(update_id),
                     vehicle_ip TEXT,
                     vehicle_port INTEGER,
@@ -210,15 +211,15 @@ if __name__=='__main__':
 
     # Windows laptop
     # UUID = CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_public_key)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)''',
-                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client, windows_eddsa_public_key))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_install_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_public_key)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)''',
+                    ('CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A', True, True, 3, windows_ip, windows_port, aes_128_windows_client, aes_256_windows_client, windows_eddsa_public_key))
     
     # Linux laptop
     # UUID = C42157C2-9526-B07C-7E43-B4A9FC957957
-    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_public_key)
-                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)''',
-                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client, linux_eddsa_public_key))
+    cursor.execute('''INSERT INTO vehicles (vehicle_id, update_readiness_status, update_install_status, update_id, vehicle_ip, vehicle_port, last_poll_time, aes_128, aes_256, ed25519_public_key)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)''',
+                    ('C42157C2-9526-B07C-7E43-B4A9FC957957', False, True, 2, linux_ip, linux_port, aes_128_linux_client, aes_256_linux_client, linux_eddsa_public_key))
     
     # Server UUID = 5B8DECB9-2A5B-48FA-966B-673B9A731C1F
     cursor.execute('''INSERT INTO network_information (local_ip, local_port, identifier)
@@ -275,7 +276,9 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
                     update_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     update_version TEXT,
-                    update_readiness_status BOOLEAN
+                    update_install_status BOOLEAN,
+                    update_readiness_status BOOLEAN,
+                    update_install_time TIMESTAMP
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_downloads (
@@ -296,6 +299,12 @@ if __name__=='__main__':
                     root_ca BLOB
                     )''')
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS rollback_data (
+                    rollback_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    update_version TEXT,
+                    update_file BLOB
+                    )''')
+    
     print("Tables created.")
 
     print("Adding data to the Windows client database ...")
@@ -304,9 +313,9 @@ if __name__=='__main__':
                     (server_ip, server_port, windows_ip, windows_port, 'CE41D0EA-C52B-E941-9F86-60F4FAF5CD8A'))
     
     file_data, _ = get_update_file(file3)
-    cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
-                    VALUES (?, ?)''',
-                    ('1.0.2.w', False))
+    cursor.execute('''INSERT INTO update_information (update_version, update_install_status, update_readiness_status, update_install_time)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
+                    ('1.0.2.w', True, False))
     
     cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key, windows_client_private_key, windows_client_certificate, root_ca)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -336,7 +345,9 @@ if __name__=='__main__':
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_information (
                     update_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     update_version TEXT,
-                    update_readiness_status BOOLEAN
+                    update_install_status BOOLEAN,
+                    update_readiness_status BOOLEAN,
+                    update_install_time TIMESTAMP
                     )''')
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS update_downloads (
@@ -357,6 +368,12 @@ if __name__=='__main__':
                     root_ca BLOB
                     )''')
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS rollback_data (
+                    rollback_entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    update_version TEXT,
+                    update_file BLOB
+                    )''')
+    
     print("Tables created.")
 
     print("Adding data to the Linux database ...")
@@ -365,9 +382,9 @@ if __name__=='__main__':
                     (server_ip, server_port, linux_ip, linux_port, 'C42157C2-9526-B07C-7E43-B4A9FC957957'))
     
     file_data, _ = get_update_file(file4)
-    cursor.execute('''INSERT INTO update_information (update_version, update_readiness_status)
-                    VALUES (?, ?)''',
-                    ('1.0.3.png', False))
+    cursor.execute('''INSERT INTO update_information (update_version, update_install_status, update_readiness_status, update_install_time)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
+                    ('1.0.3.png', True, False))
     
     cursor.execute('''INSERT INTO cryptographic_data (aes_128, aes_256, ed25519_private_key, ed25519_public_key, server_ed25519_public_key, linux_client_private_key, linux_client_certificate, root_ca)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',

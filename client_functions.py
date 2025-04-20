@@ -12,14 +12,14 @@ def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
-    print("1. Check for new updates") # TODO: The server should check if the latest update is the same as the one the client has
+    print("1. Check for new updates")
     print("2. Download new updates")
     print("3. Install downloaded updates") # TODO: Should tell the server the new version number and move the old update to a rollback table in the database
     # print("-------------------------------------------------------------------------------------------")
     # print("10. Change the update readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status")
-    print("21. Display the update status") # TODO: Check if an update is queud for download or if there is one installed.
+    print("21. Display the update install status")
     print("22. Display the update version")
     print("-------------------------------------------------------------------------------------------")
     print("30. [DEMO] Rollback to the previous update") # TODO: Should display contents of rollback table and ask which version to go to
@@ -208,7 +208,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         return BOOL_NONE, CHECK_UPDATE_ERROR
 
 # Checks if there is an update in the downloads buffer
-def check_update_in_downloads_buffer() -> typing.Tuple[int]:
+def check_update_in_downloads_buffer() -> int:
     try:
         database, ret_val = get_client_database()
         if ret_val == ERROR:
@@ -359,7 +359,28 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
 
         # In reality would install to the vehicle
         # To simulate, it is being installed to a folder location
-        file_path = os.path.join("install_location", update_file_name)
+        # Move the current installed update to the rollback data database
+
+        # Retrieve the current installed update version and file
+        current_update = (cursor.execute("SELECT update_version FROM update_information WHERE update_entry_id = 1")).fetchone()[0]
+        current_file_path = os.path.join(INSTALL_LOCATION, current_update)
+
+        # No file upon first initialisation of demonstration system, so nothing to remove to rollback database
+        try:
+            with open(current_file_path, 'rb') as current_file:
+                current_file_data = current_file.read()
+            # Insert the current update into the rollback table
+            cursor.execute("INSERT INTO rollback_data (update_version, update_file) VALUES (?, ?)", (current_update, current_file_data))
+            db_connection.commit()
+            print(f"Current update {current_update} moved to rollback data database.")
+
+            # Remove the current file from the install location
+            os.remove(current_file_path)
+            print(f"Previous update file removed from install location.")
+        except Exception as e:
+            print(f"No previous update file to remove: {e}")
+
+        file_path = os.path.join(INSTALL_LOCATION, update_file_name)
 
         with open(file_path, 'wb') as file:
             file.write(file_data)
@@ -369,12 +390,38 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
         db_connection.commit()
         print("Update file removed from the download queue.")
 
-        # TODO: Update time of install
-        cursor.execute("UPDATE update_information SET update_version = ? WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed
+        cursor.execute("UPDATE update_information SET update_version = ?, update_install_time = CURRENT_TIMESTAMP WHERE update_entry_id = 1", (update_file_name,)) # Update the version installed and the time
         db_connection.commit()
         print("Update version updated in the database.")
 
         db_connection.close()
+
+        # Notifies the server of the new update version installed
+        server_host, server_port, ret_val = get_server_information()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the server information.")
+            print("Please check the logs for more details.")
+            return ERROR
+
+        selector, connection_socket, ret_val = create_connection(server_host, server_port, selector)
+        if ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return CONNECTION_INITIATE_ERROR    
+
+        key = selector.get_key(connection_socket)
+        
+        key.data.data_subtype = UPDATE_VERSION_PUSH
+        key.data.outb = str.encode(update_file_name)
+
+        response_event.clear()
+        response_event.wait(timeout=None)
+        if not response_event.is_set():
+            print("Timeout waiting for server response.")
+            return CONNECTION_SERVICE_ERROR
+
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
+
 
         return SUCCESS
             
