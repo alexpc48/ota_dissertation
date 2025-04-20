@@ -12,17 +12,18 @@ def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
-    print("1. Check for an update") # TODO: The server should check if the latest update is the same as the one the client has
-    print("2. Download update")
-    print("3. Install update") # TODO: Should tell the server the new version number and move the old update to a rollback table in the database
-    print("-------------------------------------------------------------------------------------------")
-    print("10. Change the update readiness status")
+    print("1. Check for new updates") # TODO: The server should check if the latest update is the same as the one the client has
+    print("2. Download new updates")
+    print("3. Install downloaded updates") # TODO: Should tell the server the new version number and move the old update to a rollback table in the database
+    # print("-------------------------------------------------------------------------------------------")
+    # print("10. Change the update readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("20. Display the update readiness status")
     print("21. Display the update status") # TODO: Check if an update is queud for download or if there is one installed.
     print("22. Display the update version")
     print("-------------------------------------------------------------------------------------------")
-    print("30. Rollback update") # TODO: Should display contents of rollback table and ask which version to go to
+    print("30. [DEMO] Rollback to the previous update") # TODO: Should display contents of rollback table and ask which version to go to
+    print("31. [DEMO] Change the update install readiness status")
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
@@ -380,3 +381,37 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
     except Exception as e:
         print(f"An error occurred: {e}")
         return UPDATE_INSTALL_ERROR
+
+# Gets all informations about itself
+def get_all_information() -> typing.Tuple[str, str, str, int]:
+    try:
+        database, ret_val = get_client_database()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the database name.")
+            print("Please check the logs for more details.")
+            return STR_NONE, STR_NONE, STR_NONE, ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        # Check if there is an update in the downloads buffer
+        downloads_buffer_status = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()[0]
+        if downloads_buffer_status == 1:
+            update_install_status = UPDATE_IN_DOWNLOADS # Means waiting on an update to be installed
+        else:
+            update_install_status = UPDATE_INSTALLED
+
+        result = (cursor.execute("SELECT update_version, update_readiness_status FROM update_information WHERE update_entry_id = 1")).fetchone()
+        update_version_bytes = str.encode(result[0])
+        update_readiness_status = result[1]
+        if update_readiness_status == True:
+            update_readiness_bytes = UPDATE_READY
+        elif update_readiness_status == False:
+            update_readiness_bytes = UPDATE_NOT_READY
+
+        db_connection.close()
+
+        return update_version_bytes, update_install_status, update_readiness_bytes, SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return STR_NONE, STR_NONE, ERROR

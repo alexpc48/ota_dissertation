@@ -532,7 +532,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         db_connection.close()
 
         # Determines if the data to be sent is just a status response or request, or it is actual data
-        if data_to_send in vars(constants).values(): # Checks if the data to send is defined in the constants file
+        if data_to_send in vars(constants).values() and not data_subtype: # Checks if the data to send is defined in the constants file
             data_type = STATUS_CODE
         else:
             data_type = DATA

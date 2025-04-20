@@ -11,15 +11,15 @@ def options_menu() -> str:
     print("\n-------------------------------------------------------------------------------------------")
     print("Options:")
     print("-------------------------------------------------------------------------------------------")
-    print("1. Push the latest update to a client") # TODO: Check first if the client already has the update
+    print("1. Push the latest update to a client")
     print("-------------------------------------------------------------------------------------------")
-    print("10. Get a clients update readiness status")
-    print("11. Get a clients update status") # TODO: Check if the update has been installed, failed, behind, etc.
-    print("12. Get a clients update version")
+    print("10. Get a clients update install readiness status")
+    print("11. Get a clients update install status") # TODO: Check if the update has been installed, failed, behind, etc.
+    print("12. Get a clients installed update version")
     # print("-------------------------------------------------------------------------------------------")
     # print("20. Change the update file")
     print("-------------------------------------------------------------------------------------------")
-    print("30. Return all clients information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
+    print("30. Return all client information") # TODO: Returns information polled from clients, or the information taken from the database if client is not up
     print("-------------------------------------------------------------------------------------------")
     print("98. Redisplay the options menu")
     print("99. Exit")
@@ -177,6 +177,22 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
             print("An error occurred while retrieving the client network information.")
             return ERROR
         
+        print("Checking if the client is up to date ...")
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        latest_update_version = (cursor.execute("SELECT update_version FROM updates ORDER BY update_id DESC LIMIT 1")).fetchone()[0] # Get the latest update version from the database
+        client_stored_update_version = (cursor.execute("SELECT updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,))).fetchone()[0] # Get the client's current update version
+        db_connection.close()
+
+        # Compare the versions
+        if client_stored_update_version == latest_update_version:
+            print(f"Client {identifier} is already up to date with version {latest_update_version}.")
+            return CLIENT_UP_TO_DATE_ERROR
+        else:
+            print(f"Client is not up to date. Pushing update ...")
+        
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
             print("Error: Connection initiation failed.")
@@ -230,3 +246,75 @@ def check_for_updates() -> typing.Tuple[bool, bytes]:
         update_available = False
         update_available_bytes = UPDATE_NOT_AVALIABLE
     return update_available, update_available_bytes
+
+# Polls all available clients for an information table
+# Gets their update version, update readiness status, and update install status (file name = dynamic length, readiness status is 4 bytes, update intstall status = 5 bytes)
+def poll_all_clients(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> typing.Tuple[dict, int]:
+    try:
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE")
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        # Retrieve all client network information from the database
+        clients = cursor.execute("SELECT vehicle_id, vehicle_ip, vehicle_port FROM vehicles").fetchall()
+        db_connection.close()
+
+        client_poll_information = {}
+        # Go through each client and poll them for information
+        for client in clients:
+            identifier, client_host, client_port = client
+            print(f"Polling client at {client_host}:{client_port} ...")
+            selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+            if ret_val == CONNECTION_INITIATE_ERROR: # Means client is not online, so return current information stored and timestamp
+                print("Error: Connection initiation failed. Client is not online.")
+                db_connection = sqlite3.connect(database)
+                cursor = db_connection.cursor()
+                # Retrieve update version and readiness status from the database for the given identifier
+                result = cursor.execute("SELECT update_readiness_status, updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()
+                update_readiness_status, update_version = result[0], result[1]
+                last_poll_time = cursor.execute("SELECT last_poll_time FROM vehicles WHERE vehicle_id = ?", (identifier,)).fetchone()[0]
+                db_connection.close()
+                # Convert to datetime object
+                last_poll_time = datetime.datetime.strptime(last_poll_time, "%Y-%m-%d %H:%M:%S").strftime("%d-%m-%Y %H:%M:%S") # Poll time is in the wrong format (uses CURRENT_TIMESTAMP), so reformat
+
+                client_poll_information[identifier] = {
+                "update_version": update_version,
+                "update_install_status": update_install_status,
+                "update_readiness_status": update_readiness_status,
+                "last_poll_time": last_poll_time
+                }
+                
+                break
+
+            key = selector.get_key(connection_socket)
+            key.data.identifier = identifier
+
+            key.data.data_subtype = ALL_INFORMATION
+            key.data.outb = ALL_INFORMATION_REQUEST
+
+            response_event.clear()
+            response_event.wait(timeout=None)
+            if not response_event.is_set():
+                print("Timeout waiting for client response.")
+                return CONNECTION_SERVICE_ERROR
+        
+            update_version, update_install_status, update_readiness_status = response_data.get("all_information")
+
+            client_poll_information[identifier] = {
+                "update_version": update_version,
+                "update_install_status": update_install_status,
+                "update_readiness_status": update_readiness_status,
+                "last_poll_time": datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+            }
+        
+        # print(client_poll_information)
+        # print(type(client_poll_information))
+            
+        response_data.clear()  # Clear the response data for the next request
+        response_event.clear() # Clear the event for the next request
+
+        return client_poll_information, SUCCESS
+                
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, ERROR

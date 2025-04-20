@@ -191,6 +191,18 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                             key.data.outb = update_version_bytes
                             key.data.data_subtype = UPDATE_VERSION
 
+                        elif key.data.inb == ALL_INFORMATION_REQUEST:
+                            print("All information request received.")
+                            print("Retrieving all information ...")
+                            update_version_bytes, update_install_status, update_readiness_bytes, ret_val = get_all_information()
+                            if ret_val == ERROR:
+                                print("An error occurred while retrieving all information.")
+                                print("Please check the logs for more details.")
+                                return ERROR
+                            key.data.file_name = update_version_bytes # File name is the version number
+                            key.data.outb = update_install_status + update_readiness_bytes # Update readiness status + update installed status
+                            key.data.data_subtype = ALL_INFORMATION
+
                         elif data_type == DATA:
                             if data_subtype == UPDATE_FILE:
                                 ret_val = write_update_file_to_database(key.data.file_name.decode(), key.data.inb)

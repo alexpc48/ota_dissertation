@@ -15,6 +15,8 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     ret_val = push_update(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update pushed successfully.")
+                    elif ret_val == CLIENT_UP_TO_DATE_ERROR:
+                        print("Error: Client is up to date.")
                     elif ret_val == CONNECTION_INITIATE_ERROR:
                         print("Error: Connection initiation failed.")
                     else:
@@ -57,6 +59,31 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print(f"Last poll time: {last_poll_time}")
                     else:
                         print("An error occurred while getting the clients update version.")
+                        print("Please check the logs for more details.")
+
+                case '30': # Poll all clients
+                    print("Polling all clients ...")
+                    client_poll_information, ret_val = poll_all_clients(selector, response_event, response_data)
+                    if ret_val == SUCCESS:
+                        for identifier, info in client_poll_information.items():
+                            last_poll_time = info["last_poll_time"]
+                            update_version = info["update_version"]
+                            update_install_status = info["update_install_status"]
+                            update_readiness_status = info["update_readiness_status"]
+
+                            print(f"Client {identifier} information (last poll time: {last_poll_time}):")
+                            print(f"Update version: {update_version}")
+                            if update_install_status == UPDATE_INSTALLED:
+                                print("Update install status: All updates installed.")
+                            else:
+                                print("Update install status: Update is queued for install.")
+                            if update_readiness_status == int(True):
+                                print("Update readiness status: Client is ready to install updates.")
+                            else:
+                                print("Update readiness status: Client is not ready to install updates.")
+                                
+                    else:
+                        print("An error occurred while polling all clients.")
                         print("Please check the logs for more details.")
 
                 case '98': # Redisplay the options menu
@@ -165,6 +192,9 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                         elif data_type == DATA:
                             if data_subtype == UPDATE_VERSION: # Client has pushed their update version
                                 response_data["update_version"] = key.data.inb.decode()
+                            elif data_subtype == ALL_INFORMATION:
+                                print("All information received.")
+                                response_data["all_information"] = [key.data.file_name.decode(), key.data.inb[:5], key.data.inb[5:]]
                             key.data.outb = DATA_RECEIVED_ACK
 
                         if key.data.inb == DATA_RECEIVED_ACK:
