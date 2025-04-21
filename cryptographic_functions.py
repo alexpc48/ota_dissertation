@@ -5,9 +5,14 @@
 from constants import *
 
 import re
+
 import hashlib
+
 from Crypto.Cipher import AES
+
 from cryptography.hazmat.primitives.asymmetric import ed25519
+
+
 import typing
 import types
 import ssl
@@ -56,7 +61,10 @@ def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
     try:
         print("Generating hash ...")
 
-        update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest()) # Creates hash of the update file
+        if HASHING_ALGORITHM == 'sha-256': # SHA-256
+            print("Using SHA-256 hashing algorithm.")
+            update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest()) # Creates hash of the update file
+
         print("Hash generated.")
 
         return update_file_hash, SUCCESS
@@ -69,9 +77,12 @@ def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
 def generate_signature(payload: bytes, private_key_bytes: bytes) -> typing.Tuple[bytes, int]:
     try:
         print("Generating signature ...")
-        
-        private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
-        signature = private_key.sign(payload)
+
+        if SIGNATURE_ALGORITHM == 'ed25519':
+            print("Using Ed25519 signature algorithm.")
+            private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
+            signature = private_key.sign(payload)
+
         print("Signature generated.")
         payload += signature
 
@@ -99,7 +110,10 @@ def verify_hash(payload: bytes, file_name_length: int, payload_length: int) -> t
         signature_size = get_signature_size()
         data_inb = payload[file_name_length:payload_length - HASH_SIZE - signature_size]
         update_file_hash = (payload[payload_length - HASH_SIZE - signature_size:payload_length - signature_size]).decode()
-        generated_hash = hashlib.sha256(data_inb).hexdigest() # Verify hash of the update file
+
+        if HASHING_ALGORITHM == 'sha-256': # SHA-256
+            print("Using SHA-256 hashing algorithm.")
+            generated_hash = hashlib.sha256(data_inb).hexdigest() # Verify hash of the update file
 
         if update_file_hash != generated_hash:
             print("Hash mismatch. Payload not valid.")
@@ -121,8 +135,10 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
         signed_payload = payload[:payload_length - signature_size] # Extracts the bytes that were originally signed
         signature = payload[payload_length - signature_size:payload_length]
 
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
-        public_key.verify(signature, signed_payload)
+        if SIGNATURE_ALGORITHM == 'ed25519':
+            print("Using Ed25519 signature algorithm.")
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
+            public_key.verify(signature, signed_payload)
 
         print("Signature verified.")
         return SUCCESS

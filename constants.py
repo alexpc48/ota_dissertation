@@ -69,9 +69,10 @@ NONCE_LENGTH = 16 # Standard default is 12 bytes for GCM, but used 16 bytes due 
 ENCRYPTION_ALGORITHM = 'aes_128' # aes_128, aes_256
 IDENTIFIER_LENGTH = 36
 SECURITY_MODE = 1 # 1 = Secure, 0 = Insecure - Used for demonstration purposes
-HASH_SIZE = 64 # SHA256 hash size in bytes
+
 ED25591_SIGNATURE_SIZE = 64
-SIGNATURE_ALGORITHM = 'ed25519' # ed25519, rsa, ecdsa
+SIGNATURE_ALGORITHM = 'ed25519' # ed25519
+
 HANDSHAKE_COMPLETE = b'10017'
 STATUS_CODE_SIZE = 5
 HANDSHAKE_FINISHED = b'10018'
@@ -80,6 +81,8 @@ UPDATE_INSTALLED = b'10020'
 UPDATE_IN_DOWNLOADS = b'10021'
 INSTALL_STATUS_REQUEST = b'10022'
 INSTALL_LOCATION = 'install_location'
+HASH_SIZE = 64 # SHA-256 hash size in bytes
+HASHING_ALGORITHM = 'sha-256' # sha-256
 
 # Networking constants
 SERVER_PORT = 50069
