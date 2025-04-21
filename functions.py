@@ -145,6 +145,8 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         _ = write_diagnostic_file('Acceppting connection', diagnostics_file, security_operations)
         print("Diagnostics written.")
 
+        print(f"Cipher suite: {connection_socket.cipher()}")
+
         return SUCCESS
     
     except Exception as e:
@@ -251,6 +253,8 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         security_operations = [context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats]
         _ = write_diagnostic_file('Creating Connection', diagnostics_file, security_operations)
         print("Diagnostics written.")
+
+        print(f"Cipher suite: {connection_socket.cipher()}")
 
         return selector, connection_socket, SUCCESS
     
