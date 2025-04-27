@@ -117,6 +117,11 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     print("Connecting with invalid TLS certificate ...")
                     _, _, _ = connect_with_invalid_tls(selector)
                     print("Connection with invalid TLS certificate finished.")
+                
+                case '31': # Use and invalid encryption key
+                    print("Using an invalid encryption key ...")
+                    _ = use_invalid_encryption_key(selector)
+                    print("Using an invalid encryption key finished.")
 
                 case '98': # Redisplay the options menu
                     continue

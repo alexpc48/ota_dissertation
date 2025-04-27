@@ -7,7 +7,7 @@ from functions import *
 from server_functions import *
 
 # Only the create connection part since the system should detect the use of invalid certificates and exit the connection
-def connect_with_invalid_tls(selector: selectors.DefaultSelector) -> typing.Tuple[selectors.DefaultSelector, ssl.SSLSocket, int]:
+def connect_with_invalid_tls(selector: selectors.SelectSelector) -> typing.Tuple[selectors.SelectSelector, ssl.SSLSocket, int]:
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # Auto-negotiates highgest available protocol
         context.minimum_version = ssl.TLSVersion.TLSv1_3 # Enforces NIST-approved TLS 1.3 ciphers
@@ -103,3 +103,50 @@ def connect_with_invalid_tls(selector: selectors.DefaultSelector) -> typing.Tupl
         print(f"An error occurred: {e}")
         _ = close_connection(connection_socket, selector)
         return None, None, CONNECTION_INITIATE_ERROR
+    
+# Fails authenticated encryption / fails decryption
+# Only needs to send data not read it since client should except before processing data and a response
+def use_invalid_encryption_key(selector: selectors.SelectSelector) -> int:
+    try:        
+        _, identifier, client_host, client_port, ret_val = get_client_network_information()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
+            return ERROR
+        
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return CONNECTION_INITIATE_ERROR
+
+        key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
+
+        key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
+        key.data.data_subtype = UPDATE_FILE
+        key.data.outb = file_data
+
+        encryption_key = random.randbytes(16) # Use random invalid encryption key
+
+        payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
+        if ret_val == PAYLOAD_ENCRYPTION_ERROR:
+            print("Error: Failed to encrypt payload.")
+            return PAYLOAD_ENCRYPTION_ERROR
+        elif ret_val == PAYLOAD_CREATION_ERROR:
+            print("Error: Failed to create payload.")
+            return PAYLOAD_CREATION_ERROR
+        
+        print(f"Sending data to {client_host}:{client_port}")
+        while payload:
+            sent = connection_socket.send(payload)
+            payload = payload[sent:]
+        key.data.outb = BYTES_NONE
+        print("Data sent.")
+
+        # while True: continue
+
+        return SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR

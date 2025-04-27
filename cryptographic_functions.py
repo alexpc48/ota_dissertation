@@ -220,7 +220,7 @@ def load_cryptographic_data(context: ssl.SSLContext, port: int) -> typing.Tuple[
         return None, ERROR
 
 # Implemented as a workaround for the client going into receive mode after the handshake is complete instead of write mode
-def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors.DefaultSelector) -> int:
+def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors.SelectSelector) -> int:
     try:
         # Waits for TLS handshake confirmation to be sent
         while True:

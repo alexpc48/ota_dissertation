@@ -168,7 +168,8 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
                 remote_host, remote_port = connection_socket.getpeername()[0], connection_socket.getpeername()[1]
 
                 # Read events
-                if mask & selectors.EVENT_READ:                        
+                if mask & selectors.EVENT_READ:
+                    print(f"Checking for received data from {remote_host}:{remote_port} ...")                        
                     key.data.file_name, key.data.inb, data_type, data_subtype, _, ret_val = receive_payload(connection_socket)
                     if ret_val == CONNECTION_CLOSE_ERROR:
                         print(f"Connection closed by {remote_host}:{remote_port}.")
