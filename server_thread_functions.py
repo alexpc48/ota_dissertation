@@ -3,6 +3,7 @@
 # Libraries
 from constants import *
 from server_functions import *
+from malicious_functions import *
 
 def menu_thread(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> None:
     try:
@@ -111,6 +112,11 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     else:
                         print("An error occurred while polling all clients.")
                         print("Please check the logs for more details.")
+
+                case '30': # Connect with invalid TLS certificate
+                    print("Connecting with invalid TLS certificate ...")
+                    _, _, _ = connect_with_invalid_tls(selector)
+                    print("Connection with invalid TLS certificate finished.")
 
                 case '98': # Redisplay the options menu
                     continue

@@ -186,8 +186,6 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         
         # Waits for the connection to complete in a non-blocking way, but blocks all other operations
         connection_attempts = 0
-        timeout_interval = random.randint(1, 10)
-        time.sleep(timeout_interval) # Refreshes in random intervals to avoid connection collisions
         while not data.connected:
             err = connection_socket.connect_ex((host, port)) # Try connecting
             if err == 10056 or err == SUCCESS: # Connection made
@@ -249,7 +247,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         print("TLS handshake successful.")
 
         end_time = time.perf_counter()
-        print(f"Creating connection completed in {end_time - start_time - timeout_interval:.9f} seconds.") # - timeout_interval accounts for the random sleep time
+        print(f"Creating connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
         print("Writing diagnostics ...")
         security_operations = [context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats]
         _ = write_diagnostic_file('Creating Connection', diagnostics_file, security_operations)
