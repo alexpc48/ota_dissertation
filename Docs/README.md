@@ -1,19 +1,20 @@
 # Install Steps
 
 1. **Install Python**
+
 2. **Install pip**
-3. **Install requirements**  
-   - Run:  
+
+3. **Install virtualenv**  
      ```sh
-     pip install -r requirements.txt
+     pip install virtualenv
      ```
+
 4. **Create a virtual environment**  
-   - Run:  
      ```sh
      python3 -m venv .venv
      ```
+
 5. **Activate the virtual environment**  
-   - You should see `(.venv)` appear in the console.  
    - **Linux**:  
      ```sh
      source .venv/bin/activate
@@ -23,13 +24,26 @@
      ```sh
      .venv\Scripts\activate.bat
      ```
-     - Use `.venv\Scripts\deactivate.bat` to exit the `.venv` console environment.
-6. **Change script permissions (Linux only)**  
-   - Run:  
+     - You should see `(.venv)` appear in the console.
+     - Use `.venv\Scripts\deactivate` or `.venv\Scripts\deactivate.bat` to exit the `.venv` console environment.
+
+6. **Install requirements**  
+     ```sh
+     pip install -r requirements.txt
+     ```
+
+7. **Change script permissions (Linux only)**  
      ```sh
      chmod u+x build_simulation.sh run_simulation.sh
      ```
-7. **Build the simulation**  
+
+8. **Edit IP addresses**
+   - Edit `helpers\setup_db.py`
+   - To run the simulation, uncomment only the local host IP addresses and ports
+   - To run on a network, uncomment the relevnat block of IP addresses and ports
+
+9. **Build the simulation**
+   - Change directory to `build_scripts\` and then run the following:
    - **Linux**:  
      ```sh
      ./build_simulation.sh
@@ -38,7 +52,9 @@
      ```sh
      build_simulation.bat
      ```
-8. **Run the simulation**  
+
+11. **Run the simulation**
+   - If running on the local host, do the following:
    - **Linux**:  
      ```sh
      ./run_simulation.sh
@@ -46,4 +62,24 @@
    - **Windows**:  
      ```sh
      run_simulation.bat
+     ```
+     
+   - If running on a network, change back to the parent directory (`cd ..`), and then for each device run the correct executable:
+   - **Linux**:
+   - To run the client
+     ```sh
+     ./client.exe
+     ```
+   - To run the server
+     ```sh
+     ./server.exe
+     ```
+   - **Windows**:  
+   - To run the client
+     ```sh
+     client.exe
+     ```
+   - To run the server
+     ```sh
+     server.exe
      ```
