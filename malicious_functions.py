@@ -81,10 +81,10 @@ def connect_with_invalid_tls(selector: selectors.DefaultSelector) -> typing.Tupl
                 print("SSLWantWriteError during handshake.")
             except ssl.SSLError as e:
                 print(f"SSLError during handshake: {e}")
-                return False
+                return None, None, ERROR
             except Exception as e:
                 print(f"An unexpected error occurred during handshake: {e}")
-                return False
+                return None, None, ERROR
         
         # Register the connection with the selector for read and write events
         selector.register(connection_socket, events, data=data)
@@ -94,7 +94,7 @@ def connect_with_invalid_tls(selector: selectors.DefaultSelector) -> typing.Tupl
         ret_val = wait_for_TLS_handshake(connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
-            return ERROR
+            return None, None, ERROR
         print("TLS handshake successful.")
 
         return selector, connection_socket, SUCCESS
