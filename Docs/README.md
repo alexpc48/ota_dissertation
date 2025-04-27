@@ -5,13 +5,11 @@
 2. **Install pip**
 
 3. **Install virtualenv**  
-   - Run:  
      ```sh
      pip install virtualenv
      ```
 
 4. **Create a virtual environment**  
-   - Run:  
      ```sh
      python3 -m venv .venv
      ```
@@ -30,13 +28,11 @@
      - Use `.venv\Scripts\deactivate` or `.venv\Scripts\deactivate.bat` to exit the `.venv` console environment.
 
 6. **Install requirements**  
-   - Run:  
      ```sh
      pip install -r requirements.txt
      ```
 
 7. **Change script permissions (Linux only)**  
-   - Run:  
      ```sh
      chmod u+x build_simulation.sh run_simulation.sh
      ```
