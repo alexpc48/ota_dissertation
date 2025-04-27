@@ -217,7 +217,8 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         # connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False, server_hostname=host) # Wraps the socket with TLS
         (connection_socket), socket_wrap_stats = measure_operation(process, context.wrap_socket, connection_socket, do_handshake_on_connect=False, server_hostname=host) 
         print("Initiating TLS handshake ...")
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < 10:  # Wait 10 seconds until timing out
             try:
                 connection_socket.do_handshake() # Can't measure the performance of this due to non-blocking nature
                 # do_tls_handshake_stats = measure_operation(process, connection_socket.do_handshake)
