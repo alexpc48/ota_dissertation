@@ -12,6 +12,7 @@ import tracemalloc
 import time
 import random
 import constants
+import random
 import datetime
 import psutil
 import os
@@ -145,7 +146,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         _ = write_diagnostic_file('Acceppting connection', diagnostics_file, security_operations)
         print("Diagnostics written.")
 
-        print(f"Cipher suite: {connection_socket.cipher()}")
+        # print(f"Cipher suite: {connection_socket.cipher()}")
 
         return SUCCESS
     
@@ -178,8 +179,9 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
             print("Error creating context.")
             return ERROR
 
-        connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connection_socket.setblocking(False)
+        connection_private_key_file = "create_connection_private_key.pem"
+        connection_certificate_file = "create_connection_certificate.pem"
+        root_ca_file = "root_ca.pem"
 
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
@@ -453,6 +455,19 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INCOMPLETE_PAYLOAD_ERROR
                 payload += chunk
             print("Payload received.")
+
+            print(f"Header: {header}")
+            print(f"Nonce length: {len(nonce)}")
+            print(f"Nonce: {nonce}")
+            print(f"Tag: {tag}")
+            print(f"Tag length: {len(tag)}")
+            print(f"Identifier: {identifier}")
+            print(f"Payload length: {payload_length}")
+            print(f"Data type: {data_type}")
+            print(f"File name length: {file_name_length}")
+            print(f"Data subtype: {data_subtype}")
+            print(f"Payload: {payload}")
+
             
             print("Timing security checks ...")
             process = psutil.Process(os.getpid())
@@ -578,9 +593,10 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
 
         payload_length = len(encrypted_payload)
+        file_name_length = len(file_name)
 
         # Only packs integers for the header
-        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, len(file_name), data_subtype)
+        header = struct.pack(PACK_DATA_COUNT, payload_length, data_type, file_name_length, data_subtype)
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
 

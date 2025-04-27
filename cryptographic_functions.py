@@ -5,7 +5,7 @@
 from constants import *
 
 import re
-
+import ssl
 import hashlib
 
 from Crypto.Cipher import AES
@@ -29,9 +29,17 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
             print("Using AES encryption.")
             encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
-            nonce = encryption_cipher.nonce
+            # nonce = encryption_cipher.nonce
             encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
+            # encrypted_payload = encryption_cipher.encrypt(payload)
         
+        print(f"Tag: {tag}")
+        print(f"Tag length: {len(tag)}")
+
+        print(f"Encrypted key: {encryption_key}")
+
+        print(f"Payload: {encrypted_payload}")
+
         print("Payload encrypted.")
         return nonce, encrypted_payload, tag, SUCCESS
             
@@ -48,6 +56,8 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
             print("Using AES decryption.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
             decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
+            # decrypted_payload = decryption_cipher.decrypt(payload)
+            print(f"Decrypted payload: {decrypted_payload}")
 
         print("Payload decrypted.")
         return decrypted_payload, SUCCESS
