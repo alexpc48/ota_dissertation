@@ -304,11 +304,12 @@ def measure_operation(process, func, *args, **kwargs):
     cpu_user = cpu_times_end.user - cpu_times_start.user
     cpu_sys = cpu_times_end.system - cpu_times_start.system
     cpu_total = cpu_user + cpu_sys
-    mem_rss = mem_info_end.rss - mem_info_start.rss
-    mem_uss = getattr(mem_info_end, 'uss', 0) - getattr(mem_info_start, 'uss', 0)
-    cpu_equiv = cpu_total / elapsed_time if elapsed_time > 0 else 0
 
+    mem_rss = mem_info_end.rss - mem_info_start.rss # Resident Set Size (RSS) - total memory used by the process
+    mem_uss = getattr(mem_info_end, 'uss', 0) - getattr(mem_info_start, 'uss', 0) # Unique Set Size (USS) - memory used by the process that is not shared with other processes
+    cpu_equiv = cpu_total / elapsed_time if elapsed_time > 0 else 0 # Effective CPU cores used
     py_alloc = sum(stat.size_diff for stat in snapshot_end.compare_to(snapshot_start, 'lineno'))
+
     tracemalloc.stop()
 
     return result, {
