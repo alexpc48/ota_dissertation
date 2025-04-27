@@ -12,6 +12,8 @@ from Crypto.Cipher import AES
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
+from cryptography.exceptions import InvalidSignature
+
 
 import typing
 import types
@@ -143,7 +145,7 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
         print("Signature verified.")
         return SUCCESS
 
-    except ed25519.InvalidSignature:
+    except InvalidSignature:
         print("Signature is not valid.")
         return SIGNATURE_INVALID_ERROR
     

@@ -128,6 +128,11 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     _ = use_invalid_hash(selector)
                     print("Using an invalid hash finished.")
 
+                case '33': # Use an invalid signature
+                    print("Using an invalid signature ...")
+                    _ = use_invalid_signature(selector)
+                    print("Using an invalid signature finished.")
+
                 case '98': # Redisplay the options menu
                     continue
 

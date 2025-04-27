@@ -143,14 +143,13 @@ def use_invalid_encryption_key(selector: selectors.SelectSelector) -> int:
         key.data.outb = BYTES_NONE
         print("Data sent.")
 
-        # while True: continue
-
         return SUCCESS
 
     except Exception as e:
         print(f"An error occurred: {e}")
         return ERROR
     
+# Changes a single byte in the payload after the hash is generated to test the hash verification on the client-side
 def use_invalid_hash(selector: selectors.SelectSelector) -> int:
     try:        
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
@@ -221,12 +220,12 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
             payload, ret_val = generate_signature(payload, private_key)
             if ret_val == ERROR:
                 print("Error during signature generation.")
-                return BYTES_NONE, PAYLOAD_CREATION_ERROR
+                return PAYLOAD_CREATION_ERROR
                     
         nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
-            return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
+            return PAYLOAD_ENCRYPTION_ERROR
 
         payload_length = len(encrypted_payload)
 
@@ -242,7 +241,97 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
         key.data.outb = BYTES_NONE
         print("Data sent.")
 
-        # while True: continue
+        return SUCCESS
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ERROR
+    
+def use_invalid_signature(selector: selectors.SelectSelector) -> int:
+    try:
+        _, identifier, client_host, client_port, ret_val = get_client_network_information()
+        if ret_val == ERROR:
+            print("An error occurred while retrieving the client network information.")
+            return ERROR
+        
+        selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
+        if ret_val == CONNECTION_INITIATE_ERROR:
+            print("Error: Connection initiation failed.")
+            return CONNECTION_INITIATE_ERROR
+
+        key = selector.get_key(connection_socket)
+
+        key.data.identifier = identifier
+
+        key.data.file_name, file_data, _ = get_update_file() # Use socket for global file name access
+        key.data.data_subtype = UPDATE_FILE
+        key.data.outb = file_data
+
+        dotenv.load_dotenv()
+        database = os.getenv("SERVER_DATABASE") # No need use of a default database if SERVER_DATABASE is not found
+        
+        print("Retrieving encryption key ...")
+        encryption_key = BYTES_NONE
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
+        print("Encryption key retrieved successfully.")
+        db_connection.close()
+
+        # Gets the senders identifier
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
+        db_connection.close()
+
+        # Determines if the data to be sent is just a status response or request, or it is actual data
+        if key.data.outb in vars(constants).values() and not key.data.data_subtype: # Checks if the data to send is defined in the constants file
+            key.data.data_type = STATUS_CODE
+        else:
+            key.data.data_type = DATA
+
+        # Keeps the same header format even if endpoint is not sending a file
+        if not key.data.file_name or type(key.data.file_name) == str:
+            key.data.file_name = BYTES_NONE
+
+        payload = key.data.file_name + key.data.outb
+
+        # Security relating to update files, not response or request communications
+        if key.data.data_subtype == UPDATE_FILE:
+            update_file_hash, ret_val = generate_hash(key.data.outb)
+            if ret_val == ERROR:
+                print("Error during hash generation.")
+                return PAYLOAD_CREATION_ERROR
+            payload += update_file_hash
+
+            # Generate a new Ed25519 private key to simulate signing data while trying to impersonate the original digital signature
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+            private_key = Ed25519PrivateKey.generate()
+            private_key = private_key.private_bytes_raw()
+
+            payload, ret_val = generate_signature(payload, private_key)
+            if ret_val == ERROR:
+                print("Error during signature generation.")
+                return PAYLOAD_CREATION_ERROR
+                    
+        nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
+        if ret_val != SUCCESS:
+            print("Error during payload encryption.")
+            return PAYLOAD_ENCRYPTION_ERROR
+
+        payload_length = len(encrypted_payload)
+
+        # Only packs integers for the header
+        header = struct.pack(PACK_DATA_COUNT, payload_length, key.data.data_type, len(key.data.file_name), key.data.data_subtype)
+
+        payload = header + nonce + tag + str.encode(identifier) + encrypted_payload
+
+        print(f"Sending data to {client_host}:{client_port}")
+        while payload:
+            sent = connection_socket.send(payload)
+            payload = payload[sent:]
+        key.data.outb = BYTES_NONE
+        print("Data sent.")
 
         return SUCCESS
 
