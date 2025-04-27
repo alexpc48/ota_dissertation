@@ -1,35 +1,89 @@
-# 1. Install Python and pip
-# (Make sure Python and pip are installed on your system)
+# Install Steps
 
-# 2. Install virtualenv
-pip install virtualenv
+1. **Install Python**
 
-# 3. Create and activate the virtual environment
-python3 -m venv .venv
+2. **Install pip**
 
-# Activate virtual environment
-# Linux:
-source .venv/bin/activate
+3. **Install virtualenv**  
+   - Run:  
+     ```sh
+     pip install virtualenv
+     ```
 
-# Windows:
-.venv\Scripts\activate.bat
+4. **Create a virtual environment**  
+   - Run:  
+     ```sh
+     python3 -m venv .venv
+     ```
 
-# 4. Install project dependencies
-pip install -r requirements.txt
+5. **Activate the virtual environment**  
+   - **Linux**:  
+     ```sh
+     source .venv/bin/activate
+     ```
+     - Use `deactivate` to exit the `.venv` console environment.  
+   - **Windows**:  
+     ```sh
+     .venv\Scripts\activate.bat
+     ```
+     - You should see `(.venv)` appear in the console.
+     - Use `.venv\Scripts\deactivate` or `.venv\Scripts\deactivate.bat` to exit the `.venv` console environment.
 
-# 5. (Linux only) Set script permissions
-chmod u+x build_simulation.sh run_simulation.sh
+6. **Install requirements**  
+   - Run:  
+     ```sh
+     pip install -r requirements.txt
+     ```
 
-# 6. Build the simulation
-# Linux:
-./build_simulation.sh
+7. **Change script permissions (Linux only)**  
+   - Run:  
+     ```sh
+     chmod u+x build_simulation.sh run_simulation.sh
+     ```
 
-# Windows:
-build_simulation.bat
+8. **Edit IP addresses**
+   - Edit `helpers\setup_db.py`
+   - To run the simulation, uncomment only the local host IP addresses and ports
+   - To run on a network, uncomment the relevnat block of IP addresses and ports
 
-# 7. Run the simulation
-# Linux:
-./run_simulation.sh
+9. **Build the simulation**
+   - Change directory to `build_scripts\` and then run the following:
+   - **Linux**:  
+     ```sh
+     ./build_simulation.sh
+     ```
+   - **Windows**:  
+     ```sh
+     build_simulation.bat
+     ```
 
-# Windows:
-run_simulation.bat
+11. **Run the simulation**
+   - If running on the local host, do the following:
+   - **Linux**:  
+     ```sh
+     ./run_simulation.sh
+     ```
+   - **Windows**:  
+     ```sh
+     run_simulation.bat
+     ```
+     
+   - If running on a network, change back to the parent directory (`cd ..`), and then for each device run the correct executable:
+   - **Linux**:
+   - To run the client
+     ```sh
+     ./client.exe
+     ```
+   - To run the server
+     ```sh
+     ./server.exe
+     ```
+   - **Windows**:  
+   - To run the client
+     ```sh
+     client.exe
+     ```
+   - To run the server
+     ```sh
+     server.exe
+     ```
