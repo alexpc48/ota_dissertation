@@ -122,6 +122,11 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                     print("Using an invalid encryption key ...")
                     _ = use_invalid_encryption_key(selector)
                     print("Using an invalid encryption key finished.")
+                
+                case '32': # Use an invalid hash
+                    print("Using an invalid hash ...")
+                    _ = use_invalid_hash(selector)
+                    print("Using an invalid hash finished.")
 
                 case '98': # Redisplay the options menu
                     continue

@@ -529,7 +529,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             database = os.getenv("LINUX_CLIENT_DATABASE")
             diagnostics_file = "linux_client_diagnostics.txt"
 
-        # Gets the endpoints identifier
+        # Gets the senders identifier
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         identifier = (cursor.execute("SELECT identifier FROM network_information WHERE network_id = 1")).fetchone()[0]
@@ -554,7 +554,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         # Security relating to update files, not response or request communications
         if data_subtype == UPDATE_FILE:
             update_file = data_to_send
-            update_file_hash, ret_val = generate_hash(update_file)
+            # update_file_hash, ret_val = generate_hash(update_file)
             (update_file_hash, ret_val), hash_generation_stats = measure_operation(process, generate_hash, update_file)
             if ret_val == ERROR:
                 print("Error during hash generation.")
