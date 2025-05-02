@@ -9,7 +9,7 @@ def accept_new_connection(socket: socket.socket) -> int:
     try:
         # Get socket information
         connection_socket, address = socket.accept()
-        print(f"Accepted connection from {address}")
+        #print(f"Accepted connection from {address}")
 
         connection_socket.setblocking(False)
 
@@ -21,7 +21,7 @@ def accept_new_connection(socket: socket.socket) -> int:
         return SUCCESS
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
 
         # Close the connection socket if it was created
         if connection_socket in locals():
@@ -37,7 +37,7 @@ def accept_new_connection(socket: socket.socket) -> int:
 #         if mask & selectors.EVENT_READ: # Uses bitwise AND to check mask holds the value of EVENT_READ
 #             received_data = socket.recv(1024) # Recieve 1024 bytes of data
 #             if received_data:
-#                 print(f"Received {received_data!r} from {key.data.address}")
+#                 #print(f"Received {received_data!r} from {key.data.address}")
 #                 key.data.outb += received_data
                 
     
@@ -54,7 +54,7 @@ if __name__=='__main__':
     listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listening_socket.bind((server_host, server_port))
     listening_socket.listen()
-    print(f"Listening on {(server_host, server_port)} ...")
+    #print(f"Listening on {(server_host, server_port)} ...")
     listening_socket.setblocking(False)
     
     # Register the listening socket with the selector
@@ -73,11 +73,11 @@ if __name__=='__main__':
                 else:
                     service_current_connection(key, mask)
     except KeyboardInterrupt:
-        print("Keyboard interruption. Exiting ...")
+        #print("Keyboard interruption. Exiting ...")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
     finally:
         # Close connections used
         selector.close()
         listening_socket.close()
-        print("Server closed.")
+        #print("Server closed.")

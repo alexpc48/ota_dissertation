@@ -46,16 +46,16 @@ def connect_with_invalid_tls(selector: selectors.SelectSelector) -> typing.Tuple
                 data.connected = True
                 break
             elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY: # Non-blocking connection in progress
-                print(f"Connection to {host}:{port} in progress ...")
+                #print(f"Connection to {host}:{port} in progress ...")
                 time.sleep(1)
                 continue
             elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
-                print("No device found at the specified address.")
+                #print("No device found at the specified address.")
                 # Try up to 5 times to connect to the client
                 if connection_attempts > 5:
-                    print("Connection attempts exceeded. Exiting ...")
+                    #print("Connection attempts exceeded. Exiting ...")
                     return None, None, CONNECTION_INITIATE_ERROR
-                print("Trying again ...")
+                #print("Trying again ...")
                 time.sleep(5)
                 connection_attempts += 1
                 continue
@@ -75,10 +75,11 @@ def connect_with_invalid_tls(selector: selectors.SelectSelector) -> typing.Tuple
                 data.outb = HANDSHAKE_COMPLETE
                 break
             except ssl.SSLWantReadError:
-                # print("SSLWantReadError during handshake.")
+                # #print("SSLWantReadError during handshake.")
                 continue
             except ssl.SSLWantWriteError:
-                print("SSLWantWriteError during handshake.")
+                #print("SSLWantWriteError during handshake.")
+                continue
             except ssl.SSLError as e:
                 print(f"SSLError during handshake: {e}")
                 return None, None, ERROR
@@ -95,7 +96,7 @@ def connect_with_invalid_tls(selector: selectors.SelectSelector) -> typing.Tuple
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return None, None, ERROR
-        print("TLS handshake successful.")
+        #print("TLS handshake successful.")
 
         return selector, connection_socket, SUCCESS
     
@@ -110,12 +111,12 @@ def use_invalid_encryption_key(selector: selectors.SelectSelector) -> int:
     try:        
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -130,11 +131,13 @@ def use_invalid_encryption_key(selector: selectors.SelectSelector) -> int:
 
         payload, ret_val = create_payload(key.data.outb, key.data.file_name, key.data.data_subtype, encryption_key)
         if ret_val == PAYLOAD_ENCRYPTION_ERROR:
-            print("Error: Failed to encrypt payload.")
+            #print("Error: Failed to encrypt payload.")
             return PAYLOAD_ENCRYPTION_ERROR
         elif ret_val == PAYLOAD_CREATION_ERROR:
-            print("Error: Failed to create payload.")
+            #print("Error: Failed to create payload.")
             return PAYLOAD_CREATION_ERROR
+        
+        print("Payload created successfully with an invalid encryption key.")
         
         print(f"Sending data to {client_host}:{client_port}")
         while payload:
@@ -154,12 +157,12 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
     try:        
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -173,12 +176,12 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # No need use of a default database if SERVER_DATABASE is not found
         
-        print("Retrieving encryption key ...")
+        #print("Retrieving encryption key ...")
         encryption_key = BYTES_NONE
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
-        print("Encryption key retrieved successfully.")
+        #print("Encryption key retrieved successfully.")
         db_connection.close()
 
         # Gets the senders identifier
@@ -201,12 +204,12 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
 
         # Security relating to update files, not response or request communications
         if key.data.data_subtype == UPDATE_FILE:
-            print("Generating hash ...")
+            #print("Generating hash ...")
 
             if HASHING_ALGORITHM == 'sha-256': # SHA-256
-                print("Using SHA-256 hashing algorithm.")
+                #print("Using SHA-256 hashing algorithm.")
                 update_file_hash = str.encode(hashlib.sha256(key.data.outb).hexdigest()) # Creates hash of the update file
-            print("Hash generated.")
+            #print("Hash generated.")
 
             # Change update file by a single byte to test the hash verification
             key.data.outb += random.randbytes(1)
@@ -219,12 +222,12 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
 
             payload, ret_val = generate_signature(payload, private_key)
             if ret_val == ERROR:
-                print("Error during signature generation.")
+                #print("Error during signature generation.")
                 return PAYLOAD_CREATION_ERROR
                     
         nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
         if ret_val != SUCCESS:
-            print("Error during payload encryption.")
+            #print("Error during payload encryption.")
             return PAYLOAD_ENCRYPTION_ERROR
 
         payload_length = len(encrypted_payload)
@@ -233,6 +236,8 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
         header = struct.pack(PACK_DATA_COUNT, payload_length, key.data.data_type, len(key.data.file_name), key.data.data_subtype)
 
         payload = header + nonce + tag + str.encode(identifier) + encrypted_payload
+
+        print("Payload created successfully with an invalid hash.")
 
         print(f"Sending data to {client_host}:{client_port}")
         while payload:
@@ -244,19 +249,19 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
         return SUCCESS
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return ERROR
     
 def use_invalid_signature(selector: selectors.SelectSelector) -> int:
     try:
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -270,12 +275,12 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE") # No need use of a default database if SERVER_DATABASE is not found
         
-        print("Retrieving encryption key ...")
+        #print("Retrieving encryption key ...")
         encryption_key = BYTES_NONE
         db_connection = sqlite3.connect(database)
         cursor = db_connection.cursor()
         encryption_key = (cursor.execute(f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ?", (key.data.identifier,))).fetchone()[0]
-        print("Encryption key retrieved successfully.")
+        #print("Encryption key retrieved successfully.")
         db_connection.close()
 
         # Gets the senders identifier
@@ -300,7 +305,7 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
         if key.data.data_subtype == UPDATE_FILE:
             update_file_hash, ret_val = generate_hash(key.data.outb)
             if ret_val == ERROR:
-                print("Error during hash generation.")
+                #print("Error during hash generation.")
                 return PAYLOAD_CREATION_ERROR
             payload += update_file_hash
 
@@ -311,12 +316,12 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
 
             payload, ret_val = generate_signature(payload, private_key)
             if ret_val == ERROR:
-                print("Error during signature generation.")
+                #print("Error during signature generation.")
                 return PAYLOAD_CREATION_ERROR
                     
         nonce, encrypted_payload, tag, ret_val = payload_encryption(payload, encryption_key)
         if ret_val != SUCCESS:
-            print("Error during payload encryption.")
+            #print("Error during payload encryption.")
             return PAYLOAD_ENCRYPTION_ERROR
 
         payload_length = len(encrypted_payload)
@@ -325,6 +330,8 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
         header = struct.pack(PACK_DATA_COUNT, payload_length, key.data.data_type, len(key.data.file_name), key.data.data_subtype)
 
         payload = header + nonce + tag + str.encode(identifier) + encrypted_payload
+
+        print("Payload created successfully with an invalid hash.")
 
         print(f"Sending data to {client_host}:{client_port}")
         while payload:
@@ -336,5 +343,5 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
         return SUCCESS
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return ERROR

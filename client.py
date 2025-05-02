@@ -11,8 +11,8 @@ if __name__=='__main__':
     # Get local host and port for the listening socket
     database, ret_val = get_client_database()
     if ret_val == ERROR:
-        print("An error occurred while retrieving the database name.")
-        print("Please check the logs for more details.")
+        #print("An error occurred while retrieving the database name.")
+        #print("Please check the logs for more details.")
         sys.exit(ERROR)
     db_connection = sqlite3.connect(database)
     cursor = db_connection.cursor()
@@ -21,10 +21,10 @@ if __name__=='__main__':
     db_connection.close()
     
     # Create listening socket so that the server can connect forcefully (e.g., push updates to client)
-    print(f"Creating listening socket on {local_host}:{local_port} ...")
+    #print(f"Creating listening socket on {local_host}:{local_port} ...")
     ret_val = create_listening_socket(local_host, local_port, selector)
     if ret_val == LISTENING_SOCKET_CREATION_ERROR:
-        print("Failed to create listening socket")
+        #print("Failed to create listening socket")
         sys.exit(ret_val)
 
     response_event = threading.Event() # Used to signal when a connection has been serviced

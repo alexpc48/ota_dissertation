@@ -18,7 +18,7 @@ def get_bios_uuid():
         else:
             return 1
     except Exception as e:
-        print(f"An error occured: {e}")
+        #print(f"An error occured: {e}")
         return 1
     
-print(get_bios_uuid())
+#print(get_bios_uuid())

@@ -20,10 +20,10 @@ if __name__=='__main__':
     local_host, local_port = result[0], result[1]
     
     # Create listening socket so that the client can connect
-    print(f"Creating listening socket on {local_host}:{local_port} ...")
+    #print(f"Creating listening socket on {local_host}:{local_port} ...")
     ret_val = create_listening_socket(local_host, local_port, selector)
     if ret_val != SUCCESS:
-        print('Failed to create listening socket')
+        #print('Failed to create listening socket')
         sys.exit(ret_val)
 
     response_event = threading.Event() # Used to signal when a connection has been serviced

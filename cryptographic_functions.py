@@ -26,72 +26,72 @@ import selectors
 # Encryption
 def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[bytes, bytes, bytes, int]:
     try:
-        print("Encrypting payload ...")
+        #print("Encrypting payload ...")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
-            print("Using AES encryption.")
+            #print("Using AES encryption.")
             encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
             nonce = encryption_cipher.nonce
             encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
         
-        print("Payload encrypted.")
+        #print("Payload encrypted.")
         return nonce, encrypted_payload, tag, SUCCESS
             
     except Exception as e:
-        print(f"An error occurred during payload encryption: {e}")
+        #print(f"An error occurred during payload encryption: {e}")
         return BYTES_NONE, BYTES_NONE, BYTES_NONE, ERROR
 
 # Decryption
 def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
-        print("Decrypting payload ...")
+        #print("Decrypting payload ...")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
-            print("Using AES decryption.")
+            #print("Using AES decryption.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
             decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
 
-        print("Payload decrypted.")
+        #print("Payload decrypted.")
         return decrypted_payload, SUCCESS
             
     except Exception as e:
-        print(f"An error occurred during payload decryption: {e}")
+        #print(f"An error occurred during payload decryption: {e}")
         return BYTES_NONE, ERROR
 
 # Generate hash
 def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
     try:
-        print("Generating hash ...")
+        #print("Generating hash ...")
 
         if HASHING_ALGORITHM == 'sha-256': # SHA-256
-            print("Using SHA-256 hashing algorithm.")
+            #print("Using SHA-256 hashing algorithm.")
             update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest()) # Creates hash of the update file
 
-        print("Hash generated.")
+        #print("Hash generated.")
 
         return update_file_hash, SUCCESS
     
     except Exception as e:
-        print(f"An error occurred during hash verification: {e}")
+        #print(f"An error occurred during hash verification: {e}")
         return BYTES_NONE, ERROR
 
 # Generate signature
 def generate_signature(payload: bytes, private_key_bytes: bytes) -> typing.Tuple[bytes, int]:
     try:
-        print("Generating signature ...")
+        #print("Generating signature ...")
 
         if SIGNATURE_ALGORITHM == 'ed25519':
-            print("Using Ed25519 signature algorithm.")
+            #print("Using Ed25519 signature algorithm.")
             private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
             signature = private_key.sign(payload)
 
-        print("Signature generated.")
+        #print("Signature generated.")
         payload += signature
 
         return payload, SUCCESS
     
     except Exception as e:
-        print(f"An error occurred during signature verification: {e}")
+        #print(f"An error occurred during signature verification: {e}")
         return BYTES_NONE, ERROR
 
 def get_signature_size() -> int:
@@ -107,50 +107,50 @@ def get_signature_size() -> int:
 # Verify hash
 def verify_hash(payload: bytes, file_name_length: int, payload_length: int) -> typing.Tuple[bytes, int]:
     try:
-        print("Verifying hash ...")
+        #print("Verifying hash ...")
 
         signature_size = get_signature_size()
         data_inb = payload[file_name_length:payload_length - HASH_SIZE - signature_size]
         update_file_hash = (payload[payload_length - HASH_SIZE - signature_size:payload_length - signature_size]).decode()
 
         if HASHING_ALGORITHM == 'sha-256': # SHA-256
-            print("Using SHA-256 hashing algorithm.")
+            #print("Using SHA-256 hashing algorithm.")
             generated_hash = hashlib.sha256(data_inb).hexdigest() # Verify hash of the update file
 
         if update_file_hash != generated_hash:
-            print("Hash mismatch. Payload not valid.")
+            #print("Hash mismatch. Payload not valid.")
             return BYTES_NONE, INVALID_PAYLOAD_ERROR
         
-        print("Hash verified.")
+        # print("Hash verified.")
         return data_inb, SUCCESS
     
     except Exception as e:
-        print(f"An error occurred during hash verification: {e}")
+        #print(f"An error occurred during hash verification: {e}")
         return ERROR
 
 # Verify signature
 def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> int:
     try:
-        print("Verifying signature ...")
+        #print("Verifying signature ...")
         
         signature_size = get_signature_size()
         signed_payload = payload[:payload_length - signature_size] # Extracts the bytes that were originally signed
         signature = payload[payload_length - signature_size:payload_length]
 
         if SIGNATURE_ALGORITHM == 'ed25519':
-            print("Using Ed25519 signature algorithm.")
+            #print("Using Ed25519 signature algorithm.")
             public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
             public_key.verify(signature, signed_payload)
 
-        print("Signature verified.")
+        #print("Signature verified.")
         return SUCCESS
 
     except InvalidSignature:
-        print("Signature is not valid.")
+        #print("Signature is not valid.")
         return SIGNATURE_INVALID_ERROR
     
     except Exception as e:
-        print(f"An error occurred during signature verification: {e}")
+        #print(f"An error occurred during signature verification: {e}")
         return ERROR
 
 # Wrapper to create TLS contexts
@@ -166,7 +166,7 @@ def create_context(mode: str, port: int) -> typing.Tuple[ssl.SSLContext, int]:
             print("Invalid mode. Use 'server' or 'client'.")
             return None, ERROR
         
-        context.minimum_version = ssl.TLSVersion.TLSv1_3 # Enforces NIST-approved TLS 1.3 ciphers
+        context.minimum_version = ssl.TLSVersion.TLSv1_3 # Enforces TLS 1.3 ciphers
         context.verify_mode = ssl.CERT_REQUIRED
         
         context, ret_val = load_cryptographic_data(context, port)
@@ -208,12 +208,12 @@ def load_cryptographic_data(context: ssl.SSLContext, port: int) -> typing.Tuple[
             root_ca_temp.write(root_ca)
         context.load_cert_chain(certfile="connection_certificate.pem", keyfile="connection_private_key.pem")
         context.load_verify_locations(cafile="root_ca.pem")
-        print("Certificates loaded.")
-        print("Removing temporary files ...")
+        #print("Certificates loaded.")
+        #print("Removing temporary files ...")
         os.remove("connection_certificate.pem")
         os.remove("connection_private_key.pem")
         os.remove("root_ca.pem")
-        print("Temporary files removed.")
+        #print("Temporary files removed.")
 
         return context, SUCCESS
 
@@ -241,7 +241,7 @@ def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors
                         try:
                             key.data.inb = connection_socket.recv(STATUS_CODE_SIZE)
                             if key.data.inb == HANDSHAKE_COMPLETE:
-                                print("TLS handshake complete.")
+                                #print("TLS handshake complete.")
                                 key.data.outb = HANDSHAKE_FINISHED
                             key.data.handshake_complete = True
                         except ssl.SSLWantReadError:
@@ -254,7 +254,7 @@ def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors
                             sent = connection_socket.send(key.data.outb)
                             key.data.outb = key.data.outb[sent:]
                         key.data.outb = BYTES_NONE
-                        print("Data sent.")
+                        #print("Data sent.")
                         break
 
             if key.data.handshake_complete == True:

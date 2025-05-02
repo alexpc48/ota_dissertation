@@ -29,6 +29,7 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
             print("Socket unregistered from selector.")
         except KeyError:
             print("Socket is not registered with selector.")
+            pass
 
         if connection_socket.fileno() != -1:
             # Waits until client sends its close_notify
@@ -36,7 +37,7 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
             start_time = time.time()
             while time.time() - start_time < 10:  # Wait 10 seconds until timing out
                 try:
-                    print("Unwrapping TLS ...")
+                    #print("Unwrapping TLS ...")
                     connection_socket = connection_socket.unwrap() # Removes TLS
                     tls_unwrap = True
                     print("TLS unwrapped.")
@@ -51,12 +52,15 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
             if tls_unwrap == False:
                 print("TLS unwrap timed out.")
                 print("Abruptly closing socket ...")
+                pass
             else:
                 print("Closing socket ...")
+                pass
             connection_socket.close()
             print("Socket closed.")
         else:
             print("Socket is not open")
+            pass
 
         return SUCCESS
 
@@ -72,7 +76,7 @@ LISTENING_SOCKET_INFO = None
 def create_listening_socket(host: str, port: int, selector: selectors.SelectSelector) -> int:
     global LISTENING_SOCKET_INFO
     try:
-        print(f"Creating listening socket on {host}:{port} ...")
+        #print(f"Creating listening socket on {host}:{port} ...")
         listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listening_socket.bind((host, port))
         listening_socket.listen()
@@ -95,7 +99,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
     try:
         start_time = time.perf_counter()
         
-        print("Accepting new connection ...")
+        print("\nAccepting new connection ...")
         _, listening_port = LISTENING_SOCKET_INFO
         if listening_port == SERVER_PORT:
             diagnostics_file = "server_diagnostics.txt"
@@ -104,7 +108,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         elif listening_port == LINUX_PORT:
             diagnostics_file = "linux_client_diagnostics.txt"
 
-        print("Timing TLS implementation ...")
+        #print("Timing TLS implementation ...")
         process = psutil.Process(os.getpid())
         context_creation_stats, socket_wrap_stats, tls_handshake_stats = {}, {} , {}
 
@@ -139,18 +143,18 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         print("TLS handshake successful.")
 
         end_time = time.perf_counter()
-        print(f"Accepting connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
-        print("Writing diagnostics ...")
+        #print(f"Accepting connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
+        #print("Writing diagnostics ...")
         security_operations = [context_creation_stats, socket_wrap_stats, tls_handshake_stats]
         _ = write_diagnostic_file('Acceppting connection', diagnostics_file, security_operations)
-        print("Diagnostics written.")
+        #print("Diagnostics written.")
 
-        print(f"Cipher suite: {connection_socket.cipher()}")
+        #print(f"Cipher suite: {connection_socket.cipher()}")
 
         return SUCCESS
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         _ = close_connection(connection_socket, selector)
         return CONNECTION_ACCEPT_ERROR
     
@@ -185,6 +189,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         data = types.SimpleNamespace(address=(host, port), inb=BYTES_NONE, outb=BYTES_NONE, connected=False, file_name=STR_NONE, data_subtype=INT_NONE, handshake_complete=False)
         
         # Waits for the connection to complete in a non-blocking way, but blocks all other operations
+        # FIXME: I think there is another err code that I am missing
         connection_attempts = 0
         while not data.connected:
             err = connection_socket.connect_ex((host, port)) # Try connecting
@@ -199,7 +204,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
             elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
                 print("No device found at the specified address.")
                 # Try up to 5 times to connect to the client
-                if connection_attempts > 5:
+                if connection_attempts > 4:
                     print("Connection attempts exceeded. Exiting ...")
                     return None, None, CONNECTION_INITIATE_ERROR
                 print("Trying again ...")
@@ -223,10 +228,11 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 data.outb = HANDSHAKE_COMPLETE
                 break
             except ssl.SSLWantReadError:
-                # print("SSLWantReadError during handshake.")
+                # #print("SSLWantReadError during handshake.")
                 continue
             except ssl.SSLWantWriteError:
-                print("SSLWantWriteError during handshake.")
+                #print("SSLWantWriteError during handshake.")
+                continue
             except ssl.SSLError as e:
                 print(f"SSLError during handshake: {e}")
                 return None, None, ERROR
@@ -247,13 +253,13 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         print("TLS handshake successful.")
 
         end_time = time.perf_counter()
-        print(f"Creating connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
-        print("Writing diagnostics ...")
+        #print(f"Creating connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
+        #print("Writing diagnostics ...")
         security_operations = [context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats]
         _ = write_diagnostic_file('Creating Connection', diagnostics_file, security_operations)
-        print("Diagnostics written.")
+        #print("Diagnostics written.")
 
-        print(f"Cipher suite: {connection_socket.cipher()}")
+        #print(f"Cipher suite: {connection_socket.cipher()}")
 
         return selector, connection_socket, SUCCESS
     
@@ -271,13 +277,13 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
             return received_bytes, SUCCESS
         
         except ssl.SSLWantReadError:
-            # print("SSLWantReadError: Waiting for more data to be readable...")
+            # #print("SSLWantReadError: Waiting for more data to be readable...")
             continue
     
         except ssl.SSLWantWriteError:
-            # print("SSLWantWriteError: Waiting until socket is writable...")
+            # #print("SSLWantWriteError: Waiting until socket is writable...")
             continue
-    print("Timeout: No data received within 10 seconds.")
+    #print("Timeout: No data received within 10 seconds.")
     return BYTES_NONE, TIMEOUT_ERROR
 
 # ChatGPT used to help create a metrics capture for security operations
@@ -366,37 +372,37 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
         # Receive packed data (integers)
         header, ret_val = connection_receive(connection_socket, PACK_COUNT_BYTES) # Receives the amount of bytes in the struct.pack header
         if ret_val != SUCCESS:
-            print("Error during connection receive.")
+            #print("Error during connection receive.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
         if header == BYTES_NONE: # Closes connection if no data is received from the remote connection
-            print("No data received.")
+            #print("No data received.")
             return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, CONNECTION_CLOSE_ERROR
-        print("Header received.")
+        #print("Header received.")
 
         # Continue if data is received
         # Data arrives as header -> nonce -> tag -> identifier -> payload
         # Identifier not sensitive - in application could be the VIN of the vehicle
         if header:
             # Receive other sub-header information
-            print("Receiving nonce ...")
+            #print("Receiving nonce ...")
             nonce, ret_val = connection_receive(connection_socket, NONCE_LENGTH)
             if ret_val != SUCCESS:
-                print("Error during connection receive.")
+                #print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            print("Nonce received.")
-            print("Receiving tag ...")
+            #print("Nonce received.")
+            #print("Receiving tag ...")
             tag, ret_val = connection_receive(connection_socket, TAG_LENGTH)
             if ret_val != SUCCESS:
-                print("Error during connection receive.")
+                #print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
-            print("Tag received.")
-            print("Receiving identifier ...")
+            #print("Tag received.")
+            #print("Receiving identifier ...")
             identifier, ret_val = connection_receive(connection_socket, IDENTIFIER_LENGTH)
             if ret_val != SUCCESS:
-                print("Error during connection receive.")
+                #print("Error during connection receive.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
             identifier = identifier.decode()
-            print("Identifier received.")
+            #print("Identifier received.")
 
             # Uses listening port to determine which database to use
             _, port = LISTENING_SOCKET_INFO
@@ -418,7 +424,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 diagnostics_file = "linux_client_diagnostics.txt"
 
             # Retrieve symmetric encrypion key
-            print(f"Retrieving encryption key from {database} ...")
+            #print(f"Retrieving encryption key from {database} ...")
             db_connection = sqlite3.connect(database)
             cursor = db_connection.cursor()
             if port == SERVER_PORT:
@@ -426,34 +432,34 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 encryption_key = (cursor.execute(encryption_query)).fetchone()[0]
             db_connection.close()
-            print("Retrieved encryption key.")
+            #print("Retrieved encryption key.")
                     
             # Unpack the header
-            print("Unpacking header ...")
+            #print("Unpacking header ...")
             payload_length, data_type, file_name_length, data_subtype = struct.unpack(PACK_DATA_COUNT, header[:PACK_COUNT_BYTES])
-            print("Header unpacked.")
+            #print("Header unpacked.")
 
-            print("Receiving payload ...")
+            #print("Receiving payload ...")
             payload = BYTES_NONE # Initialise variable
             while len(payload) < payload_length:
                 try:
                     chunk, ret_val = connection_receive(connection_socket, BYTES_TO_READ)
                     if ret_val != SUCCESS:
-                        print("Error during connection receive.")
+                        #print("Error during connection receive.")
                         return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
                 except BlockingIOError as e:
-                    print(f"BlockingIOError: {e}")
+                    #print(f"BlockingIOError: {e}")
                     if e.errno == errno.EAGAIN:
-                        print("Resource temporarily unavailable. Retrying ...")
+                        #print("Resource temporarily unavailable. Retrying ...")
                         time.sleep(1) # Wait for a second before retrying
                         continue
                 if not chunk:
-                    print("Connection closed before receiving the full payload.")
+                    #print("Connection closed before receiving the full payload.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, INCOMPLETE_PAYLOAD_ERROR
                 payload += chunk
-            print("Payload received.")
+            #print("Payload received.")
             
-            print("Timing security checks ...")
+            #print("Timing security checks ...")
             process = psutil.Process(os.getpid())
             decryption_stats, hash_verification_stats, signature_verification_stats = {}, {} , {}
 
@@ -461,6 +467,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
+            print("Payload decrypted.")
 
             file_name = payload[:file_name_length]
 
@@ -468,6 +475,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 (data_inb, ret_val), hash_verification_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
                     print("Hash is valid.")
+                    pass
                 elif INVALID_PAYLOAD_ERROR:
                     print("Hash is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -489,6 +497,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 ret_val, signature_verification_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
                 if ret_val == SUCCESS:
                     print("Signature is valid.")
+                    pass
                 elif SIGNATURE_INVALID_ERROR:
                     print("Signature is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -499,11 +508,11 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 data_inb = payload[file_name_length:payload_length]
 
             end_time = time.perf_counter()
-            print(f"Receiving payload completed in {end_time - start_time:.9f} seconds.")
-            print("Writing diagnostics ...")
+            #print(f"Receiving payload completed in {end_time - start_time:.9f} seconds.")
+            #print("Writing diagnostics ...")
             security_operations = [decryption_stats, hash_verification_stats, signature_verification_stats]
             _ = write_diagnostic_file('Receiving Payload', diagnostics_file, security_operations)
-            print("Diagnostics written.")
+            #print("Diagnostics written.")
 
             return file_name, data_inb, data_type, data_subtype, identifier, SUCCESS
 
@@ -547,7 +556,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
 
         payload = file_name + data_to_send
 
-        print("Timing security implementation ...")
+        #print("Timing security implementation ...")
         process = psutil.Process(os.getpid())
         encryption_stats, hash_generation_stats, signature_generation_stats = {}, {} , {}
 
@@ -559,6 +568,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             if ret_val == ERROR:
                 print("Error during hash generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
+            print("Hash generated.")
             payload += update_file_hash
 
             db_connection = sqlite3.connect(database)
@@ -570,11 +580,13 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             if ret_val == ERROR:
                 print("Error during signature generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
+            print("Signature generated.")
                     
         (nonce, encrypted_payload, tag, ret_val), encryption_stats = measure_operation(process, payload_encryption, payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
+        print("Payload encrypted.")
 
         payload_length = len(encrypted_payload)
 
@@ -584,11 +596,11 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
 
         end_time = time.perf_counter()
-        print(f"Creating payload completed in {end_time - start_time:.9f} seconds.")
-        print("Writing diagnostics ...")
+        #print(f"Creating payload completed in {end_time - start_time:.9f} seconds.")
+        #print("Writing diagnostics ...")
         security_operations = [encryption_stats, hash_generation_stats, signature_generation_stats]
         _ = write_diagnostic_file('Creating Payload', diagnostics_file, security_operations)
-        print("Diagnostics written.")
+        #print("Diagnostics written.")
 
         return data_to_send, SUCCESS
 

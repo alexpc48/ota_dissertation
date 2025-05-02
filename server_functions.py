@@ -49,6 +49,7 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
             print("Vehicle IP: ", row[2])
             print("Vehicle Port: ", row[3])
             print("-----------------------------------------")
+            pass
         
         vehicle_id_input = int(input("Enter the vehicle ID to connect with: "))
 
@@ -62,7 +63,7 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
         return vehicle_id_input, identifier, client_host, client_port, SUCCESS
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return INT_NONE, STR_NONE, STR_NONE, INT_NONE, ERROR
 
 # Requests the clients update version from the client
@@ -70,12 +71,12 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
     try:
         vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return STR_NONE, STR_NONE, ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return identifier, STR_NONE, CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -87,11 +88,11 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
-            print("Timeout waiting for client response.")
+            #print("Timeout waiting for client response.")
             return STR_NONE, STR_NONE, CONNECTION_SERVICE_ERROR
         
         client_update_version = response_data.get("update_version")
-        print(f"Client update version: {client_update_version}")
+        #print(f"Client update version: {client_update_version}")
 
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
@@ -106,10 +107,12 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         db_connection.close()
 
         if latest_update_version == client_update_version:
-            print("Client is up to date.")
+            #print("Client is up to date.")
+            pass
         else:
-            print("Client is not up to date.")
-            print("Please update the client.")
+            #print("Client is not up to date.")
+            #print("Please update the client.")
+            pass
         
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
@@ -117,7 +120,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         return identifier, client_update_version, SUCCESS
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return STR_NONE, STR_NONE, ERROR
 
 # Gets the update readiness status from the client
@@ -125,12 +128,12 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
     try:
         vehicle_entry_id, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return BOOL_NONE, ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return BOOL_NONE, CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -142,7 +145,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
-            print("Timeout waiting for client response.")
+            #print("Timeout waiting for client response.")
             return BOOL_NONE, CONNECTION_SERVICE_ERROR
         
         update_readiness = response_data.get('update_readiness')
@@ -157,9 +160,10 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
         db_connection.close()
 
         if update_readiness == True:
-            print("Client is ready to install the update.")
+            #print("Client is ready to install the update.")
+            pass
         elif update_readiness == False:
-            print("Client is not ready to install the update.")
+            #print("Client is not ready to install the update.")
             return update_readiness, CLIENT_NOT_UPDATE_READY_ERROR
         
         response_data.clear()  # Clear the response data for the next request
@@ -168,7 +172,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
         return update_readiness, SUCCESS
         
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return BOOL_NONE, ERROR
     
 # Pushes an update to the client
@@ -177,10 +181,10 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
     try:
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return ERROR
         
-        print("Checking if the client is up to date ...")
+        #print("Checking if the client is up to date ...")
         dotenv.load_dotenv()
         database = os.getenv("SERVER_DATABASE")
         db_connection = sqlite3.connect(database)
@@ -191,14 +195,15 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
 
         # Compare the versions
         if client_stored_update_version == latest_update_version:
-            print(f"Client {identifier} is already up to date with version {latest_update_version}.")
+            #print(f"Client {identifier} is already up to date with version {latest_update_version}.")
             return CLIENT_UP_TO_DATE_ERROR
         else:
-            print(f"Client is not up to date. Pushing update ...")
+            #print(f"Client is not up to date. Pushing update ...")
+            pass
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -212,7 +217,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
-            print("Timeout waiting for client response.")
+            #print("Timeout waiting for client response.")
             return CONNECTION_SERVICE_ERROR
         
         response_data.clear()  # Clear the response data for the next request
@@ -221,7 +226,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         return SUCCESS
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return ERROR
 
 # Gets the latest update file from the database
@@ -237,7 +242,7 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
         return str.encode(update_version), update_file, SUCCESS
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return STR_NONE, BYTES_NONE, ERROR
 
 # Compares the latest update version against the one stored for the client
@@ -253,11 +258,11 @@ def check_for_updates(identifier: str) -> typing.Tuple[bool, bytes]:
 
     # Compare the versions
     if client_update_version == latest_update_version:
-        print("Client is up to date.")
+        #print("Client is up to date.")
         update_available = False
         update_available_bytes = UPDATE_NOT_AVALIABLE
     else:
-        print("Client is not up to date.")
+        #print("Client is not up to date.")
         update_available = True
         update_available_bytes = UPDATE_AVALIABLE
 
@@ -279,10 +284,10 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
         # Go through each client and poll them for information
         for client in clients:
             identifier, client_host, client_port = client
-            print(f"Polling client at {client_host}:{client_port} ...")
+            #print(f"Polling client at {client_host}:{client_port} ...")
             selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
             if ret_val == CONNECTION_INITIATE_ERROR: # Means client is not online, so return current information stored and timestamp
-                print("Error: Connection initiation failed. Client is not online.")
+                #print("Error: Connection initiation failed. Client is not online.")
                 db_connection = sqlite3.connect(database)
                 cursor = db_connection.cursor()
                 # Retrieve update version and readiness status from the database for the given identifier
@@ -311,7 +316,7 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
             response_event.clear()
             response_event.wait(timeout=None)
             if not response_event.is_set():
-                print("Timeout waiting for client response.")
+                #print("Timeout waiting for client response.")
                 return CONNECTION_SERVICE_ERROR
         
             update_version, update_install_status, update_readiness_status = response_data.get("all_information")
@@ -323,8 +328,8 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
                 "last_poll_time": datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             }
         
-        # print(client_poll_information)
-        # print(type(client_poll_information))
+        # #print(client_poll_information)
+        # #print(type(client_poll_information))
             
         response_data.clear()  # Clear the response data for the next request
         response_event.clear() # Clear the event for the next request
@@ -332,7 +337,7 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
         return client_poll_information, SUCCESS
                 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return None, ERROR
 
 # Gets the clients current update install status
@@ -340,12 +345,12 @@ def get_client_update_install_status(selector: selectors.SelectSelector, respons
     try:
         _, identifier, client_host, client_port, ret_val = get_client_network_information()
         if ret_val == ERROR:
-            print("An error occurred while retrieving the client network information.")
+            #print("An error occurred while retrieving the client network information.")
             return STR_NONE, ERROR
         
         selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
         if ret_val == CONNECTION_INITIATE_ERROR:
-            print("Error: Connection initiation failed.")
+            #print("Error: Connection initiation failed.")
             return STR_NONE, CONNECTION_INITIATE_ERROR
 
         key = selector.get_key(connection_socket)
@@ -357,7 +362,7 @@ def get_client_update_install_status(selector: selectors.SelectSelector, respons
         response_event.clear()
         response_event.wait(timeout=None)
         if not response_event.is_set():
-            print("Timeout waiting for client response.")
+            #print("Timeout waiting for client response.")
             return STR_NONE, CONNECTION_SERVICE_ERROR
         
         update_install_status = response_data.get('update_install_status')
@@ -383,7 +388,7 @@ def get_client_update_install_status(selector: selectors.SelectSelector, respons
         return update_install_status, SUCCESS
         
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return BYTES_NONE, ERROR
 
 # Adds the recevied update verison when it is pushed to the database
@@ -395,15 +400,15 @@ def add_update_version_to_database(identifier: str, version_number: str) -> int:
         cursor = db_connection.cursor()
         update_id = cursor.execute("SELECT update_id FROM updates WHERE update_version = ?", (version_number,)).fetchone()[0] # Gets the corresponding update ID for the version number
         if not update_id:
-            print(f"Error: Update version {version_number} does not exist in the database.")
+            #print(f"Error: Update version {version_number} does not exist in the database.")
             return ERROR
         cursor.execute("UPDATE vehicles SET update_id = ?, last_poll_time = CURRENT_TIMESTAMP WHERE vehicle_id = ?", (update_id, identifier))
         db_connection.commit()
         db_connection.close()
         
-        print("Database updated successfully.")
+        #print("Database updated successfully.")
         return SUCCESS
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        #print(f"An error occurred: {e}")
         return ERROR
