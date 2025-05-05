@@ -365,7 +365,7 @@ def write_diagnostic_file(action: str, diagnostics_file: str, security_operation
 # Receives the payload from the socket
 def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, bytes, int, int, str, int]:
     try:
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         file_name = BYTES_NONE # Initialise variable
 
         # Read the packet header
@@ -424,7 +424,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 diagnostics_file = "linux_client_diagnostics.txt"
 
             # Retrieve symmetric encrypion key
-            #print(f"Retrieving encryption key from {database} ...")
+            #print(f"Retrieving encryption key from {database} ...")z
             db_connection = sqlite3.connect(database)
             cursor = db_connection.cursor()
             if port == SERVER_PORT:
@@ -475,7 +475,6 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 (data_inb, ret_val), hash_verification_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
                     print("Hash is valid.")
-                    pass
                 elif INVALID_PAYLOAD_ERROR:
                     print("Hash is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -497,7 +496,6 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 ret_val, signature_verification_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
                 if ret_val == SUCCESS:
                     print("Signature is valid.")
-                    pass
                 elif SIGNATURE_INVALID_ERROR:
                     print("Signature is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -507,8 +505,8 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             else:
                 data_inb = payload[file_name_length:payload_length]
 
-            end_time = time.perf_counter()
-            #print(f"Receiving payload completed in {end_time - start_time:.9f} seconds.")
+            # end_time = time.perf_counter()
+            # print(f"Receiving payload completed in {end_time - start_time:.9f} seconds.")
             #print("Writing diagnostics ...")
             security_operations = [decryption_stats, hash_verification_stats, signature_verification_stats]
             _ = write_diagnostic_file('Receiving Payload', diagnostics_file, security_operations)
