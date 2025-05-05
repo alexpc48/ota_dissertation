@@ -107,7 +107,15 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
 
                 case '23': # Displays time of update installation
                     print("Displaying the update installation time ...")
-                    pass # TODO: Implement this function
+                    update_install_time, ret_val = get_update_install_time()
+                    if ret_val == SUCCESS:
+                        print("Update installation time checked successfully.")
+                        print(f"Update installation time: {update_install_time}")
+                        pass
+                    else:
+                        print("An error occured while checking the update installation time.")
+                        print("Please check the logs for more details.")
+                        pass
 
                 case '30': # Rollback the update
                     print("Rolling back the update ...")

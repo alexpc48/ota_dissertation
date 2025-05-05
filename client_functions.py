@@ -527,3 +527,24 @@ def rollback_update_install(selector: selectors.SelectSelector, response_event: 
     except Exception as e:
         print(f"An error occurred: {e}")
         return ERROR
+    
+# Gets the update install time
+def get_update_install_time() -> typing.Tuple[str, int]:
+    try:
+        database, ret_val = get_client_database()
+        if ret_val == ERROR:
+            #print("An error occurred while retrieving the database name.")
+            #print("Please check the logs for more details.")
+            return STR_NONE, ERROR
+        
+        db_connection = sqlite3.connect(database)
+        cursor = db_connection.cursor()
+        update_install_time = (cursor.execute("SELECT update_install_time FROM update_information WHERE update_entry_id = 1")).fetchone()[0]
+        update_install_time = datetime.datetime.strptime(update_install_time, "%Y-%m-%d %H:%M:%S").strftime("%d-%m-%Y %H:%M:%S")
+        db_connection.close()
+
+        return update_install_time, SUCCESS
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return STR_NONE, ERROR
