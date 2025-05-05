@@ -521,7 +521,7 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
 def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, encryption_key: bytes) -> typing.Tuple[bytes, int]:
     try:
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
 
         # Query for getting relevant database
         dotenv.load_dotenv()
@@ -593,7 +593,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
 
         data_to_send = header + nonce + tag + str.encode(identifier) + encrypted_payload
 
-        end_time = time.perf_counter()
+        # end_time = time.perf_counter()
         #print(f"Creating payload completed in {end_time - start_time:.9f} seconds.")
         #print("Writing diagnostics ...")
         security_operations = [encryption_stats, hash_generation_stats, signature_generation_stats]
