@@ -146,7 +146,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         #print(f"Accepting connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
         #print("Writing diagnostics ...")
         security_operations = [context_creation_stats, socket_wrap_stats, tls_handshake_stats]
-        _ = write_diagnostic_file('Acceppting connection', diagnostics_file, security_operations)
+        _ = write_diagnostic_file('Accepting connection', diagnostics_file, security_operations)
         #print("Diagnostics written.")
 
         #print(f"Cipher suite: {connection_socket.cipher()}")
@@ -197,7 +197,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print(f"Connection to {host}:{port} successful.")
                 data.connected = True
                 break
-            elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY: # Non-blocking connection in progress
+            elif err == 10035 or err == errno.EINPROGRESS or err == errno.EALREADY or err == errno.EAGAIN: # Non-blocking connection in progress
                 print(f"Connection to {host}:{port} in progress ...")
                 time.sleep(1)
                 continue

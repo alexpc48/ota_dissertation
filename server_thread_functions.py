@@ -204,8 +204,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
     try:
         while True:
             # Get list of events from the selector
-            timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval)
+            events = selector.select(timeout=1)
             for key, mask in events:
 
                 # Service active socket connections only, not the listening socket
