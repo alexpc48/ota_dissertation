@@ -82,22 +82,39 @@ if __name__=='__main__':
         # Copy example files to the install location to initialise it
         shutil.copyfile(file4, "install_location/1.0.3.png")
 
-    # Creates cryptographic material
-    # Ed25519 keys are used
-    # Generates public and private keys for the server and clients
-    server_eddsa_private_key = Ed25519PrivateKey.generate()
-    server_eddsa_public_key = server_eddsa_private_key.public_key()
-    windows_eddsa_private_key = Ed25519PrivateKey.generate()
-    windows_eddsa_public_key = windows_eddsa_private_key.public_key()
-    linux_eddsa_private_key = Ed25519PrivateKey.generate()
-    linux_eddsa_public_key = linux_eddsa_private_key.public_key()
-    # Converts keys to bytes for storage in the database
-    server_eddsa_private_key = server_eddsa_private_key.private_bytes_raw()
-    server_eddsa_public_key = server_eddsa_public_key.public_bytes_raw()
-    windows_eddsa_private_key = windows_eddsa_private_key.private_bytes_raw()
-    windows_eddsa_public_key = windows_eddsa_public_key.public_bytes_raw()
-    linux_eddsa_private_key = linux_eddsa_private_key.private_bytes_raw()
-    linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
+    # # Creates cryptographic material
+    # # Ed25519 keys are used
+    # Incorrect - each device creates own instance of keys
+    # # Generates public and private keys for the server and clients
+    # server_eddsa_private_key = Ed25519PrivateKey.generate()
+    # server_eddsa_public_key = server_eddsa_private_key.public_key()
+    # windows_eddsa_private_key = Ed25519PrivateKey.generate()
+    # windows_eddsa_public_key = windows_eddsa_private_key.public_key()
+    # linux_eddsa_private_key = Ed25519PrivateKey.generate()
+    # linux_eddsa_public_key = linux_eddsa_private_key.public_key()
+    # # Converts keys to bytes for storage in the database
+    # server_eddsa_private_key = server_eddsa_private_key.private_bytes_raw()
+    # server_eddsa_public_key = server_eddsa_public_key.public_bytes_raw()
+    # windows_eddsa_private_key = windows_eddsa_private_key.private_bytes_raw()
+    # windows_eddsa_public_key = windows_eddsa_public_key.public_bytes_raw()
+    # linux_eddsa_private_key = linux_eddsa_private_key.private_bytes_raw()
+    # linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
+
+    # Define the input directory
+    input_dir = os.path.join("..", "cryptographic_material")
+
+    # Helper function to load raw key bytes from a .txt file
+    def load_key_from_file(filename):
+        with open(os.path.join(input_dir, filename), 'rb') as f:
+            return f.read()
+
+    # Load raw key bytes
+    server_eddsa_private_key = load_key_from_file("server_private.txt")
+    server_eddsa_public_key = load_key_from_file("server_public.txt")
+    windows_eddsa_private_key = load_key_from_file("windows_private.txt")
+    windows_eddsa_public_key = load_key_from_file("windows_public.txt")
+    linux_eddsa_private_key = load_key_from_file("linux_private.txt")
+    linux_eddsa_public_key = load_key_from_file("linux_public.txt")
 
     # Certificates and keys are pre-made and stored as files
     # In reality would be generated and signed by a CA
