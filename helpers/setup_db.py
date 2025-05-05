@@ -101,7 +101,7 @@ if __name__=='__main__':
     # linux_eddsa_public_key = linux_eddsa_public_key.public_bytes_raw()
 
     # Define the input directory
-    input_dir = os.path.join("..", "cryptographic_material")
+    input_dir = os.path.join("cryptographic_material")
 
     # Helper function to load raw key bytes from a .txt file
     def load_key_from_file(filename):
