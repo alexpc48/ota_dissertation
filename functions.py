@@ -201,7 +201,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 print(f"Connection to {host}:{port} in progress ...")
                 time.sleep(1)
                 continue
-            elif err == 10022 or err == errno.EINVAL: # Failed connction (no client at the address)
+            elif err == 10022 or err == errno.EINVAL or err == errno.EHOSTUNREACH or err == errno.ECONNREFUSED: # Failed connction
                 print("No device found at the specified address.")
                 # Try up to 5 times to connect to the client
                 if connection_attempts > 4:

@@ -137,8 +137,8 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
         signed_payload = payload[:payload_length - signature_size] # Extracts the bytes that were originally signed
         signature = payload[payload_length - signature_size:payload_length]
 
-        print(f"Signature: {signature}")
-        print(f"Key: {public_key}")
+        # print(f"Signature: {signature}")
+        # print(f"Key: {public_key}")
 
         if SIGNATURE_ALGORITHM == 'ed25519':
             #print("Using Ed25519 signature algorithm.")
