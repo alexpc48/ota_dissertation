@@ -105,11 +105,18 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("Please check the logs for more details.")
                         pass
 
+                case '23': # Displays time of update installation
+                    print("Displaying the update installation time ...")
+                    pass # TODO: Implement this function
+
                 case '30': # Rollback the update
                     print("Rolling back the update ...")
                     ret_val = rollback_update_install(selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update rolled back successfully.")
+                        pass
+                    elif ret_val == NO_ROLLBACK_UPDATES_ERROR:
+                        print("Error: There are no updates to rollback to.")
                         pass
                     else:
                         print("An error occurred while rolling back the update.")
@@ -183,9 +190,9 @@ def listen(selector: selectors.SelectSelector) -> None:
 def service_connection(selector: selectors.SelectSelector, response_event: threading.Event, response_data: dict) -> int:
     try:
         while True:
+
             # Get list of events from the selector
-            timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval)
+            events = selector.select(timeout=1) # Refreshes for new events every second
             for key, mask in events:
 
                 # Service active socket connections only, not the listening socket

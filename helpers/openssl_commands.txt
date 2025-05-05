@@ -1,5 +1,5 @@
 Completed on my D:\ drive which has uses openssl.exe (in Windows cmd: set openssl="openssl.exe")
-openssl x509 -in <certificate_file.pem> -noout -text
+To check certificate settings: openssl x509 -in <certificate_file.pem> -noout -text
 
 openssl genpkey -algorithm ed25519 -out D:\root_ca_private_key.pem
 openssl req -new -x509 -key D:\root_ca_private_key.pem -out D:\root_ca.pem -subj "/"

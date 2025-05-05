@@ -6,7 +6,7 @@ import typing
 import os
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from Crypto.Random import get_random_bytes
-
+import shutil
 from get_os_type import *
 
 # Gets the example update files data in bytes
@@ -16,6 +16,7 @@ def get_update_file(file: str) -> typing.Tuple[bytes, int]:
     return file_data, 0
 
 # Converts \n to \r\n for same formatting across platforms
+# Simple unix2dos implementation 
 def convert_data_format(data: bytes) -> typing.Tuple[bytes, int]:
     data = data.decode('utf-8')
     data = data.replace('\n', '\r\n')
@@ -68,6 +69,9 @@ if __name__=='__main__':
         file4 = 'updates\\popeye.png'
         file5 = 'updates\\bugs_bunny.jpg'
         file6 = 'updates\\daffy_duck.png'
+        # Copy example files to the install location to initialise it
+        shutil.copyfile(file3, "install_location\\1.0.2.w")
+
     elif os_type == "Linux":
         file1 = 'updates/snoopy.png'
         file2 = 'updates/dban.iso'
@@ -75,7 +79,9 @@ if __name__=='__main__':
         file4 = 'updates/popeye.png'
         file5 = 'updates/bugs_bunny.jpg'
         file6 = 'updates/daffy_duck.png'
-    
+        # Copy example files to the install location to initialise it
+        shutil.copyfile(file4, "install_location/1.0.3.png")
+
     # Creates cryptographic material
     # Ed25519 keys are used
     # Generates public and private keys for the server and clients

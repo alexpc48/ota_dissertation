@@ -154,7 +154,7 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         _ = close_connection(connection_socket, selector)
         return CONNECTION_ACCEPT_ERROR
     
@@ -227,10 +227,10 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
                 # do_tls_handshake_stats = measure_operation(process, connection_socket.do_handshake)
                 data.outb = HANDSHAKE_COMPLETE
                 break
-            except ssl.SSLWantReadError:
+            except ssl.SSLWantReadError: # Ignore (non-blocking) error
                 # #print("SSLWantReadError during handshake.")
                 continue
-            except ssl.SSLWantWriteError:
+            except ssl.SSLWantWriteError: # Ignore (non-blocking) error
                 #print("SSLWantWriteError during handshake.")
                 continue
             except ssl.SSLError as e:

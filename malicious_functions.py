@@ -249,7 +249,7 @@ def use_invalid_hash(selector: selectors.SelectSelector) -> int:
         return SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR
     
 def use_invalid_signature(selector: selectors.SelectSelector) -> int:
@@ -343,5 +343,5 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
         return SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR

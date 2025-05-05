@@ -227,14 +227,11 @@ def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors
         # Waits for TLS handshake confirmation to be sent
         while True:
             # Get list of events from the selector
-            timeout_interval = random.randint(1, 10)
-            events = selector.select(timeout=timeout_interval)
+            events = selector.select(timeout=1) # Refreshes events every second
             for key, mask in events:
                 if key.data == "listening_socket":
                     continue
-
                 connection_socket = key.fileobj
-
                 if key.data.outb != HANDSHAKE_COMPLETE:
                     # Read events
                     if mask & selectors.EVENT_READ:                        
@@ -256,12 +253,10 @@ def wait_for_TLS_handshake(connection_socket: ssl.SSLSocket, selector: selectors
                         key.data.outb = BYTES_NONE
                         #print("Data sent.")
                         break
-
             if key.data.handshake_complete == True:
                 key.data.inb = BYTES_NONE
                 key.data.outb = BYTES_NONE
                 break
-
         return SUCCESS
     
     except Exception as e:

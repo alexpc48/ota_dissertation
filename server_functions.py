@@ -63,7 +63,7 @@ def get_client_network_information() -> typing.Tuple[int, str, str, int, int]:
         return vehicle_id_input, identifier, client_host, client_port, SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return INT_NONE, STR_NONE, STR_NONE, INT_NONE, ERROR
 
 # Requests the clients update version from the client
@@ -120,7 +120,7 @@ def get_client_update_version(selector: selectors.SelectSelector, response_event
         return identifier, client_update_version, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, STR_NONE, ERROR
 
 # Gets the update readiness status from the client
@@ -172,7 +172,7 @@ def get_client_update_readiness_status(selector: selectors.SelectSelector, respo
         return update_readiness, SUCCESS
         
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return BOOL_NONE, ERROR
     
 # Pushes an update to the client
@@ -226,7 +226,7 @@ def push_update(selector: selectors.SelectSelector, response_event: threading.Ev
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR
 
 # Gets the latest update file from the database
@@ -242,7 +242,7 @@ def get_update_file() -> typing.Tuple[bytes, bytes, int]:
         return str.encode(update_version), update_file, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, BYTES_NONE, ERROR
 
 # Compares the latest update version against the one stored for the client
@@ -287,11 +287,11 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
             #print(f"Polling client at {client_host}:{client_port} ...")
             selector, connection_socket, ret_val = create_connection(client_host, client_port, selector)
             if ret_val == CONNECTION_INITIATE_ERROR: # Means client is not online, so return current information stored and timestamp
-                #print("Error: Connection initiation failed. Client is not online.")
+                # print("Error: Connection initiation failed. Client is not online.")
                 db_connection = sqlite3.connect(database)
                 cursor = db_connection.cursor()
                 # Retrieve update version and readiness status from the database for the given identifier
-                result = cursor.execute("SELECT update_readiness_status, update_install_status updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()
+                result = cursor.execute("SELECT update_readiness_status, update_install_status, updates.update_version FROM vehicles JOIN updates ON vehicles.update_id = updates.update_id WHERE vehicles.vehicle_id = ?", (identifier,)).fetchone()
                 update_readiness_status, update_install_status, update_version = result[0], result[1], result[2]
                 last_poll_time = cursor.execute("SELECT last_poll_time FROM vehicles WHERE vehicle_id = ?", (identifier,)).fetchone()[0]
                 db_connection.close()
@@ -305,7 +305,7 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
                 "last_poll_time": last_poll_time
                 }
                 
-                break
+                continue
 
             key = selector.get_key(connection_socket)
             key.data.identifier = identifier
@@ -337,7 +337,7 @@ def poll_all_clients(selector: selectors.SelectSelector, response_event: threadi
         return client_poll_information, SUCCESS
                 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return None, ERROR
 
 # Gets the clients current update install status
@@ -388,7 +388,7 @@ def get_client_update_install_status(selector: selectors.SelectSelector, respons
         return update_install_status, SUCCESS
         
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return BYTES_NONE, ERROR
 
 # Adds the recevied update verison when it is pushed to the database
@@ -410,5 +410,5 @@ def add_update_version_to_database(identifier: str, version_number: str) -> int:
         return SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR

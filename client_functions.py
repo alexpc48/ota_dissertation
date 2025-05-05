@@ -42,7 +42,7 @@ def get_os_type() -> typing.Tuple[str, int]:
         return os_type, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, ERROR
     
 # Gets which client database to connect to based on the OS type
@@ -66,7 +66,7 @@ def get_client_database() -> typing.Tuple[str, int]:
         return database, SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, ERROR
 
 # Gets the server information from the database
@@ -89,7 +89,7 @@ def get_server_information() -> typing.Tuple[str, int, int]:
         return server_host, server_port, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, INT_NONE, ERROR
 
 # Checks the update readiness status in the database
@@ -114,7 +114,7 @@ def check_update_readiness_status() -> typing.Tuple[bool, bytes, int]:
         return update_readiness_status, update_readiness_bytes, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return BOOL_NONE, BYTES_NONE, CHECK_UPDATE_ERROR
 
 # Changes the update readiness status in the database
@@ -129,7 +129,7 @@ def change_update_readiness() -> int:
             return ERROR
 
         update_readiness_status, _, ret_val = check_update_readiness_status() # Ignore the bytes value
-        #print(f"Update readiness status currently: {update_readiness_status}")
+        print(f"Update readiness status currently: {update_readiness_status}")
 
         update_readiness_change_value = str(input("Enter a new readiness status (True/False): ")).lower()
         if update_readiness_change_value == str(update_readiness_status):
@@ -155,7 +155,7 @@ def change_update_readiness() -> int:
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR
 
 # Connects to the server
@@ -206,7 +206,7 @@ def check_for_update(selector: selectors.SelectSelector, response_event: threadi
         return update_avaliable, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return BOOL_NONE, CHECK_UPDATE_ERROR
 
 # Checks if there is an update in the downloads buffer
@@ -231,7 +231,7 @@ def check_update_in_downloads_buffer() -> int:
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR
 
 
@@ -282,7 +282,7 @@ def download_update(selector: selectors.SelectSelector, response_event: threadin
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return DOWNLOAD_UPDATE_ERROR
         
 # Gets the current update version installed
@@ -302,7 +302,7 @@ def get_update_version() -> typing.Tuple[str, bytes, int]:
         return update_version, update_version_bytes, SUCCESS
         
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, BYTES_NONE, ERROR
     
 # Writes the update file received to the downloads buffer in the database
@@ -323,7 +323,7 @@ def write_update_file_to_database(update_file_name: str, file_data: bytes) -> in
         return SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return DOWNLOAD_UPDATE_ERROR
     
 # Installs the update from the downloads buffer in the database
@@ -428,7 +428,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
         return SUCCESS
             
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return UPDATE_INSTALL_ERROR
 
 # Gets all informations about itself
@@ -462,7 +462,7 @@ def get_all_information() -> typing.Tuple[str, str, str, int]:
         return update_version_bytes, update_install_status, update_readiness_bytes, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return STR_NONE, STR_NONE, ERROR
 
 # Asks the user which rollback update to install
@@ -480,14 +480,14 @@ def rollback_update_install(selector: selectors.SelectSelector, response_event: 
         db_connection.close()
         if not result:
             #print("No rollback updates available.")
-            return ERROR
+            return NO_ROLLBACK_UPDATES_ERROR
 
-        #print("Previous updates to rollback to from the database.")
-        #print("-----------------------------------------")
+        print("Previous updates to rollback to from the database.")
+        print("-----------------------------------------")
         for row in result:
-            #print("Rollback Entry ID: ", row[0])
-            #print("Update Version: ", row[1])
-            #print("-----------------------------------------")
+            print("Rollback Entry ID: ", row[0])
+            print("Update Version: ", row[1])
+            print("-----------------------------------------")
             pass
         
         rollback_version = int(input("Enter the ID to rollback to: "))
@@ -525,5 +525,5 @@ def rollback_update_install(selector: selectors.SelectSelector, response_event: 
         return SUCCESS
 
     except Exception as e:
-        #print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
         return ERROR
