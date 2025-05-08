@@ -82,9 +82,9 @@ UPDATE_INSTALLED = b'10020'
 UPDATE_IN_DOWNLOADS = b'10021'
 INSTALL_STATUS_REQUEST = b'10022'
 INSTALL_LOCATION = 'install_location'
-HASH_SIZE = 64 # SHA-256 hash size in bytes
 
 
+HASH_SIZE = 128 # SHA-256 = 64, SHA-384 = 96, SHA-512 = 128
 HASHING_ALGORITHM = 'sha-512' # sha-256, sha-384, sha-512
 
 # Networking constants
