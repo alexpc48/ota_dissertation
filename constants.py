@@ -83,7 +83,9 @@ UPDATE_IN_DOWNLOADS = b'10021'
 INSTALL_STATUS_REQUEST = b'10022'
 INSTALL_LOCATION = 'install_location'
 HASH_SIZE = 64 # SHA-256 hash size in bytes
-HASHING_ALGORITHM = 'sha-256' # sha-256
+
+
+HASHING_ALGORITHM = 'sha-256' # sha-256, sha-384, sha-512
 
 # Networking constants
 SERVER_PORT = 50069
