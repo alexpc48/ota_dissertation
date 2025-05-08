@@ -5,6 +5,11 @@ from client_thread_functions import *
 
 # Main program
 if __name__=='__main__':
+    try:
+        tracemalloc.stop()
+    except:
+        pass
+    tracemalloc.start()
     # Create a selector object
     selector = selectors.SelectSelector()
 

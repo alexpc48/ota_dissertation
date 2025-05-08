@@ -16,6 +16,7 @@ import datetime
 import psutil
 import os
 import dotenv
+import threading
 
 from constants import *
 from cryptographic_functions import *
@@ -102,11 +103,11 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         print("\nAccepting new connection ...")
         _, listening_port = LISTENING_SOCKET_INFO
         if listening_port == SERVER_PORT:
-            diagnostics_file = "server_diagnostics.txt"
+            diagnostics_file = "server_diagnostics.csv"
         elif listening_port == WINDOWS_PORT:
-            diagnostics_file = "windows_client_diagnostics.txt"
+            diagnostics_file = "windows_client_diagnostics.csv"
         elif listening_port == LINUX_PORT:
-            diagnostics_file = "linux_client_diagnostics.txt"
+            diagnostics_file = "linux_client_diagnostics.csv"
 
         #print("Timing TLS implementation ...")
         process = psutil.Process(os.getpid())
@@ -166,11 +167,11 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         print(f"Initiating connection to {host}:{port} ...")
         _, listening_port = LISTENING_SOCKET_INFO
         if listening_port == SERVER_PORT:
-            diagnostics_file = "server_diagnostics.txt"
+            diagnostics_file = "server_diagnostics.csv"
         elif listening_port == WINDOWS_PORT:
-            diagnostics_file = "windows_client_diagnostics.txt"
+            diagnostics_file = "windows_client_diagnostics.csv"
         elif listening_port == LINUX_PORT:
-            diagnostics_file = "linux_client_diagnostics.txt"
+            diagnostics_file = "linux_client_diagnostics.csv"
 
         process = psutil.Process(os.getpid())
         context_creation_stats, socket_wrap_stats, do_tls_handshake_stats, tls_handshake_stats = {}, {} , {}, {}
@@ -288,7 +289,19 @@ def connection_receive(connection_socket: socket.socket, bytes_to_read: int) -> 
 
 # ChatGPT used to help create a metrics capture for security operations
 def measure_operation(process, func, *args, **kwargs):
-    tracemalloc.start()
+
+    peak_rss = [0]
+
+    def monitor_memory():
+        while not done[0]:
+            rss = process.memory_info().rss
+            peak_rss[0] = max(peak_rss[0], rss)
+            time.sleep(0.01)  # Sample every 10 ms
+
+    done = [False]
+    monitor_thread = threading.Thread(target=monitor_memory)
+    monitor_thread.start()
+
     snapshot_start = tracemalloc.take_snapshot()
 
     cpu_times_start = process.cpu_times()
@@ -302,19 +315,22 @@ def measure_operation(process, func, *args, **kwargs):
     cpu_times_end = process.cpu_times()
     mem_info_end = process.memory_full_info()
     cpu_percent = process.cpu_percent(interval=None)
+    # Stop monitoring
+    done[0] = True
+    monitor_thread.join()
     snapshot_end = tracemalloc.take_snapshot()
     
     # CPU and memory metrics
     cpu_user = cpu_times_end.user - cpu_times_start.user
     cpu_sys = cpu_times_end.system - cpu_times_start.system
     cpu_total = cpu_user + cpu_sys
-
+    
     mem_rss = mem_info_end.rss - mem_info_start.rss # Resident Set Size (RSS) - total memory used by the process
-    mem_uss = getattr(mem_info_end, 'uss', 0) - getattr(mem_info_start, 'uss', 0) # Unique Set Size (USS) - memory used by the process that is not shared with other processes
+    # mem_uss = getattr(mem_info_end, 'uss', 0) - getattr(mem_info_start, 'uss', 0) # Unique Set Size (USS) - memory used by the process that is not shared with other processes
+    mem_uss = mem_info_end.uss - mem_info_start.uss # Private memory - memory used by the process that is not shared with other processes
     cpu_equiv = cpu_total / elapsed_time if elapsed_time > 0 else 0 # Effective CPU cores used
     py_alloc = sum(stat.size_diff for stat in snapshot_end.compare_to(snapshot_start, 'lineno'))
-
-    tracemalloc.stop()
+    _, py_peak = tracemalloc.get_traced_memory()
 
     return result, {
         "operation": func.__name__,
@@ -326,21 +342,30 @@ def measure_operation(process, func, *args, **kwargs):
         "cpu_equiv": cpu_equiv,
         "mem_rss": mem_rss,
         "mem_uss": mem_uss,
-        "py_mem": py_alloc
+        "py_mem": py_alloc,
+        "peak_rss": peak_rss[0],
+        "py_mem_peak": py_peak
     }
 
+# Format is for .csv for export capabilties to Excel
+# 3 columns
 def log_section(name, stats, f):
-    if not stats: return
-    f.write(f"\n----- {name} Diagnostics -----\n")
-    f.write(f"  Time:                        {stats['time']:.9f} sec\n")
-    f.write(f"  CPU time (user):             {stats['cpu_user']:.9f} sec\n")
-    f.write(f"  CPU time (system):           {stats['cpu_sys']:.9f} sec\n")
-    f.write(f"  Total CPU time:              {stats['cpu_total']:.9f} sec\n")
-    f.write(f"  Effective CPU cores used:    {stats['cpu_equiv']:.2f}x\n")
-    f.write(f"  CPU usage during operation:  ~{stats['cpu_percent']:.2f}%\n")
-    f.write(f"  Memory change (RSS):         {stats['mem_rss']} bytes\n")
-    f.write(f"  Memory change (USS):         {stats['mem_uss']} bytes\n")
-    f.write(f"  Python memory allocated:     {stats['py_mem']} bytes\n\n")
+    if not stats:
+        return
+    f.write(f"{name} Diagnostics,,\n")
+    f.write(f"Time:,{stats['time']:.9f},sec\n")
+    f.write(f"CPU time (user):,{stats['cpu_user']:.9f},sec\n")
+    f.write(f"CPU time (system):,{stats['cpu_sys']:.9f},sec\n")
+    f.write(f"Total CPU time:,{stats['cpu_total']:.9f},sec\n")
+    f.write(f"Effective CPU cores used:,{stats['cpu_equiv']:.2f},x\n")
+    f.write(f"CPU usage during operation:,{stats['cpu_percent']:.2f},%\n")
+    f.write(f"Memory change (RSS):,{stats['mem_rss']},bytes\n")
+    f.write(f"Memory change (USS):,{stats['mem_uss']},bytes\n")
+    f.write(f"Python memory allocated:,{stats['py_mem']},bytes\n\n")
+    if not name == 'download_update':
+        return
+    f.write(f"Peak memory usage (RSS):,{stats['peak_rss']},bytes\n")
+    f.write(f"Peak Python memory usage:,{stats['py_mem_peak']},bytes\n\n")
 
 def write_diagnostic_file(action: str, diagnostics_file: str, security_operations: dict) -> int:
     total_time = 0
@@ -350,16 +375,16 @@ def write_diagnostic_file(action: str, diagnostics_file: str, security_operation
 
     with open(diagnostics_file, 'a') as f:
         current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        f.write(f"----- {action} Diagnostics Log -----\n")
-        f.write(f"Date and Time: {current_time}\n")
-        f.write(f"--------------------------------------------\n")
-        f.write(f"------ Operation Diagnostics ------\n")
+        f.write(f"{action} Diagnostics Log,,\n")
+        f.write(f"Date and Time: {current_time},,\n")
+        # f.write(f"\n")
+        f.write(f"Operation Diagnostics,,\n")
         for security_operation in security_operations:
             if security_operation:
                 log_section(security_operation['operation'], security_operation, f)
-        f.write(f"Total time for security operations: {total_time:.9f} sec\n")
-        f.write(f"--------------------------------------------\n")
-        f.write(f"---------- End of diagnostics Log ----------\n\n\n\n")
+        f.write(f"Total time for security operations:,{total_time:.9f},sec\n")
+        # f.write(f"\n")
+        f.write(f"End of diagnostics Log,,\n\n\n\n")
     return SUCCESS
 
 # Receives the payload from the socket
@@ -411,17 +436,17 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
                 database = os.getenv("SERVER_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM vehicles WHERE vehicle_id = ? LIMIT 1" # (identifier,)
                 sign_query = f"SELECT {SIGNATURE_ALGORITHM}_public_key FROM vehicles WHERE vehicle_id = ? LIMIT 1" # (identifier,)
-                diagnostics_file = "server_diagnostics.txt"
+                diagnostics_file = "server_diagnostics.csv"
             elif port == WINDOWS_PORT:
                 database = os.getenv("WINDOWS_CLIENT_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
                 sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
-                diagnostics_file = "windows_client_diagnostics.txt"
+                diagnostics_file = "windows_client_diagnostics.csv"
             elif port == LINUX_PORT:
                 database = os.getenv("LINUX_CLIENT_DATABASE")
                 encryption_query = f"SELECT {ENCRYPTION_ALGORITHM} FROM cryptographic_data LIMIT 1"
                 sign_query = f"SELECT server_{SIGNATURE_ALGORITHM}_public_key FROM cryptographic_data LIMIT 1"
-                diagnostics_file = "linux_client_diagnostics.txt"
+                diagnostics_file = "linux_client_diagnostics.csv"
 
             # Retrieve symmetric encrypion key
             #print(f"Retrieving encryption key from {database} ...")z
@@ -528,13 +553,13 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
         _, port = LISTENING_SOCKET_INFO
         if port == SERVER_PORT:
             database = os.getenv("SERVER_DATABASE")
-            diagnostics_file = "server_diagnostics.txt"
+            diagnostics_file = "server_diagnostics.csv"
         elif port == WINDOWS_PORT:
             database = os.getenv("WINDOWS_CLIENT_DATABASE")
-            diagnostics_file = "windows_client_diagnostics.txt"
+            diagnostics_file = "windows_client_diagnostics.csv"
         elif port == LINUX_PORT:
             database = os.getenv("LINUX_CLIENT_DATABASE")
-            diagnostics_file = "linux_client_diagnostics.txt"
+            diagnostics_file = "linux_client_diagnostics.csv"
 
         # Gets the senders identifier
         db_connection = sqlite3.connect(database)

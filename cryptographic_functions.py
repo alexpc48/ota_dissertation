@@ -38,7 +38,7 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
         return nonce, encrypted_payload, tag, SUCCESS
             
     except Exception as e:
-        #print(f"An error occurred during payload encryption: {e}")
+        print(f"An error occurred during payload encryption: {e}")
         return BYTES_NONE, BYTES_NONE, BYTES_NONE, ERROR
 
 # Decryption
@@ -55,7 +55,7 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
         return decrypted_payload, SUCCESS
             
     except Exception as e:
-        #print(f"An error occurred during payload decryption: {e}")
+        print(f"An error occurred during payload decryption: {e}")
         return BYTES_NONE, ERROR
 
 # Generate hash
@@ -72,7 +72,7 @@ def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
         return update_file_hash, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred during hash verification: {e}")
+        print(f"An error occurred during hash verification: {e}")
         return BYTES_NONE, ERROR
 
 # Generate signature
@@ -85,13 +85,13 @@ def generate_signature(payload: bytes, private_key_bytes: bytes) -> typing.Tuple
             private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
             signature = private_key.sign(payload)
 
-        #print("Signature generated.")
+        # print("Signature generated.")
         payload += signature
 
         return payload, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred during signature verification: {e}")
+        print(f"An error occurred during signature verification: {e}")
         return BYTES_NONE, ERROR
 
 def get_signature_size() -> int:
@@ -125,11 +125,11 @@ def verify_hash(payload: bytes, file_name_length: int, payload_length: int) -> t
         return data_inb, SUCCESS
     
     except Exception as e:
-        #print(f"An error occurred during hash verification: {e}")
+        print(f"An error occurred during hash verification: {e}")
         return ERROR
 
 # Verify signature
-def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> int:
+def verify_signature(public_key_bytes: bytes, payload: bytes, payload_length: int) -> int:
     try:
         #print("Verifying signature ...")
         
@@ -142,7 +142,7 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
 
         if SIGNATURE_ALGORITHM == 'ed25519':
             #print("Using Ed25519 signature algorithm.")
-            public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
             public_key.verify(signature, signed_payload)
 
         #print("Signature verified.")
@@ -153,7 +153,7 @@ def verify_signature(public_key: bytes, payload: bytes, payload_length: int) -> 
         return SIGNATURE_INVALID_ERROR
     
     except Exception as e:
-        #print(f"An error occurred during signature verification: {e}")
+        print(f"An error occurred during signature verification: {e}")
         return ERROR
 
 # Wrapper to create TLS contexts

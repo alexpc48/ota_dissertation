@@ -32,10 +32,21 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         pass
 
                 case '2': # Download updates from the server
+                    process = psutil.Process(os.getpid())
                     print("Downloading updates from the server ...")
-                    ret_val = download_update(selector, response_event, response_data)
+                    # ret_val = download_update(selector, response_event, response_data)
+                    download_update_stats = {}
+                    ret_val, download_update_stats = measure_operation(process, download_update, selector, response_event, response_data)
                     if ret_val == SUCCESS:
                         print("Update downloaded successfully.")
+                        os_type, _ = get_os_type()
+                        dotenv.load_dotenv()
+                        if os_type == "Windows":
+                            diagnostics_file = "windows_client_diagnostics.csv"
+                        elif os_type == "Linux":
+                            diagnostics_file = "linux_client_diagnostics.csv"
+                        security_operations = [download_update_stats]
+                        _ = write_diagnostic_file('Downloading Update', diagnostics_file, security_operations)
                         pass
                     elif ret_val == QUEUED_UPDATE_ERROR:
                         print("Error: There is an update already queued for install.")
