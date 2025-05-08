@@ -32,7 +32,7 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
         # print (f"Using encryption key: {encryption_key}")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
-            #print("Using AES encryption.")
+            print("Using AES algorithm.")
             encryption_cipher = AES.new(encryption_key, AES.MODE_GCM)
             nonce = encryption_cipher.nonce
             encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
@@ -55,7 +55,7 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
         # print (f"Using encryption key: {encryption_key}")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
-            #print("Using AES decryption.")
+            print("Using AES algorithm.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
             decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
 
@@ -99,7 +99,7 @@ def generate_signature(payload: bytes, private_key_bytes: bytes) -> typing.Tuple
         #print("Generating signature ...")
 
         if SIGNATURE_ALGORITHM == 'ed25519':
-            #print("Using Ed25519 signature algorithm.")
+            print("Using Ed25519 signature algorithm.")
             private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
             signature = private_key.sign(payload)
 
@@ -171,7 +171,7 @@ def verify_signature(public_key_bytes: bytes, payload: bytes, payload_length: in
         # print(f"Key: {public_key}")
 
         if SIGNATURE_ALGORITHM == 'ed25519':
-            #print("Using Ed25519 signature algorithm.")
+            print("Using Ed25519 signature algorithm.")
             public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
             public_key.verify(signature, signed_payload)
 
