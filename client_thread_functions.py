@@ -212,7 +212,7 @@ def service_connection(selector: selectors.SelectSelector, response_event: threa
 
             # Get list of events from the selector
             timeout_interval = random.randint(1, 5)
-            events = selector.select(timeout=timeout_interval) # Refreshes for new events every second
+            events = selector.select(timeout=timeout_interval) # Refreshes for new events
             for key, mask in events:
 
                 # Service active socket connections only, not the listening socket
