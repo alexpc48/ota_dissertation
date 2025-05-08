@@ -41,18 +41,18 @@ def close_connection(connection_socket: ssl.SSLSocket, selector: selectors.Selec
                     #print("Unwrapping TLS ...")
                     connection_socket = connection_socket.unwrap() # Removes TLS
                     tls_unwrap = True
-                    print("TLS unwrapped.")
+                    # print("TLS unwrapped.")
                     break
                 except ssl.SSLWantReadError:
                     continue
                 except ssl.SSLWantWriteError:
                     continue
                 except Exception as e:
-                    print(f"An error occurred during socket unwrap: {e}")
+                    # print(f"An error occurred during socket unwrap: {e}")
                     break
             if tls_unwrap == False:
-                print("TLS unwrap timed out.")
-                print("Abruptly closing socket ...")
+                # print("TLS unwrap timed out.")
+                # print("Abruptly closing socket ...")
                 pass
             else:
                 print("Closing socket ...")
@@ -135,13 +135,13 @@ def accept_new_connection(socket: socket.socket, selector: selectors.SelectSelec
         selector.register(connection_socket, events, data=data)
         print(f"Connection from {address[0]}:{address[1]} registered with the selector.")
 
-        print("Waiting for TLS handshake ...")
+        # print("Waiting for TLS handshake ...")
         # ret_val = wait_for_TLS_handshake(connection_socket, selector)
         (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return ERROR
-        print("TLS handshake successful.")
+        # print("TLS handshake successful.")
 
         end_time = time.perf_counter()
         #print(f"Accepting connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
@@ -220,7 +220,7 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         # Wrap socket with TSL
         # connection_socket = context.wrap_socket(connection_socket, do_handshake_on_connect=False, server_hostname=host) # Wraps the socket with TLS
         (connection_socket), socket_wrap_stats = measure_operation(process, context.wrap_socket, connection_socket, do_handshake_on_connect=False, server_hostname=host) 
-        print("Initiating TLS handshake ...")
+        # print("Initiating TLS handshake ...")
         start_time = time.time()
         while time.time() - start_time < 10:  # Wait 10 seconds until timing out
             try:
@@ -245,13 +245,13 @@ def create_connection(host: str, port: int, selector: selectors.SelectSelector) 
         selector.register(connection_socket, events, data=data)
         print("Socket registered.")
 
-        print("Waiting for TLS handshake ...")
+        # print("Waiting for TLS handshake ...")
         # ret_val = wait_for_TLS_handshake(connection_socket, selector)
         (ret_val), tls_handshake_stats = measure_operation(process, wait_for_TLS_handshake, connection_socket, selector)
         if ret_val != SUCCESS:
             print("Error during TLS handshake.")
             return None, None, ERROR
-        print("TLS handshake successful.")
+        # print("TLS handshake successful.")
 
         end_time = time.perf_counter()
         #print(f"Creating connection completed in {end_time - start_time:.9f} seconds.") # - timeout_interval accounts for the random sleep time
@@ -492,14 +492,16 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
             if ret_val != SUCCESS:
                 print("Error during payload decryption.")
                 return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_DECRYPTION_ERROR
-            print("Payload decrypted.")
+            # print("Payload decrypted.")
+            print(f"Payload: {payload}")
 
             file_name = payload[:file_name_length]
 
             if data_subtype == UPDATE_FILE:
                 (data_inb, ret_val), hash_verification_stats = measure_operation(process, verify_hash, payload, file_name_length, payload_length)
                 if ret_val == SUCCESS:
-                    print("Hash is valid.")
+                    # print("Hash is valid.")
+                    pass
                 elif INVALID_PAYLOAD_ERROR:
                     print("Hash is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -520,7 +522,8 @@ def receive_payload(connection_socket: ssl.SSLSocket) -> typing.Tuple[bytes, byt
 
                 ret_val, signature_verification_stats = measure_operation(process, verify_signature, public_key, payload, payload_length)
                 if ret_val == SUCCESS:
-                    print("Signature is valid.")
+                    # print("Signature is valid.")
+                    pass
                 elif SIGNATURE_INVALID_ERROR:
                     print("Signature is invalid.")
                     return BYTES_NONE, BYTES_NONE, INT_NONE, INT_NONE, STR_NONE, PAYLOAD_RECEIVE_ERROR
@@ -591,7 +594,7 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             if ret_val == ERROR:
                 print("Error during hash generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
-            print("Hash generated.")
+            # print("Hash generated.")
             payload += update_file_hash
 
             db_connection = sqlite3.connect(database)
@@ -603,13 +606,13 @@ def create_payload(data_to_send: bytes, file_name: bytes, data_subtype: int, enc
             if ret_val == ERROR:
                 print("Error during signature generation.")
                 return BYTES_NONE, PAYLOAD_CREATION_ERROR
-            print("Signature generated.")
+            # print("Signature generated.")
                     
         (nonce, encrypted_payload, tag, ret_val), encryption_stats = measure_operation(process, payload_encryption, payload, encryption_key)
         if ret_val != SUCCESS:
             print("Error during payload encryption.")
             return BYTES_NONE, PAYLOAD_ENCRYPTION_ERROR
-        print("Payload encrypted.")
+        # print("Payload encrypted.")
 
         payload_length = len(encrypted_payload)
 
