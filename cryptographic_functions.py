@@ -73,9 +73,9 @@ def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
     try:
         #print("Generating hash ...")
 
-        if HASHING_ALGORITHM == 'sha-256': # SHA-256
+        if HASHING_ALGORITHM == 'sha-256':
             print("Using SHA-256 hashing algorithm.")
-            update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest()) # Creates hash of the update file
+            update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest())
         elif HASHING_ALGORITHM == 'sha-384':
             print("Using SHA-384 hashing algorithm.")
             update_file_hash = str.encode(hashlib.sha384(file_data).hexdigest())
