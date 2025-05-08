@@ -85,7 +85,7 @@ INSTALL_LOCATION = 'install_location'
 HASH_SIZE = 64 # SHA-256 hash size in bytes
 
 
-HASHING_ALGORITHM = 'sha-256' # sha-256, sha-384, sha-512
+HASHING_ALGORITHM = 'sha-512' # sha-256, sha-384, sha-512
 
 # Networking constants
 SERVER_PORT = 50069
