@@ -28,8 +28,8 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
     try:
         #print("Encrypting payload ...")
 
-        print(f"Encrypting: {payload}")
-        print (f"Using encryption key: {encryption_key}")
+        # print(f"Encrypting: {payload}")
+        # print (f"Using encryption key: {encryption_key}")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
             #print("Using AES encryption.")
@@ -37,7 +37,7 @@ def payload_encryption(payload: bytes, encryption_key: bytes) -> typing.Tuple[by
             nonce = encryption_cipher.nonce
             encrypted_payload, tag = encryption_cipher.encrypt_and_digest(payload)
 
-        print(f"Encrypted payload: {encrypted_payload}")
+        # print(f"Encrypted payload: {encrypted_payload}")
         
         #print("Payload encrypted.")
         return nonce, encrypted_payload, tag, SUCCESS
@@ -51,15 +51,15 @@ def payload_decryption(payload: bytes, nonce: bytes, tag: bytes, encryption_key:
     try:
         #print("Decrypting payload ...")
 
-        print(f"Decrypting: {payload}")
-        print (f"Using encryption key: {encryption_key}")
+        # print(f"Decrypting: {payload}")
+        # print (f"Using encryption key: {encryption_key}")
         
         if re.search(r'\baes', ENCRYPTION_ALGORITHM): # AES
             #print("Using AES decryption.")
             decryption_cipher = AES.new(encryption_key, AES.MODE_GCM, nonce=nonce)
             decrypted_payload = decryption_cipher.decrypt_and_verify(payload, tag)
 
-        print(f"Decrypted payload: {decrypted_payload}")
+        # print(f"Decrypted payload: {decrypted_payload}")
 
         #print("Payload decrypted.")
         return decrypted_payload, SUCCESS
@@ -74,12 +74,18 @@ def generate_hash(file_data: bytes) -> typing.Tuple[bytes, int]:
         #print("Generating hash ...")
 
         if HASHING_ALGORITHM == 'sha-256': # SHA-256
-            #print("Using SHA-256 hashing algorithm.")
+            print("Using SHA-256 hashing algorithm.")
             update_file_hash = str.encode(hashlib.sha256(file_data).hexdigest()) # Creates hash of the update file
+        elif HASHING_ALGORITHM == 'sha-384':
+            print("Using SHA-384 hashing algorithm.")
+            update_file_hash = str.encode(hashlib.sha384(file_data).hexdigest())
+        elif HASHING_ALGORITHM == 'sha-512':
+            print("Using SHA-512 hashing algorithm.")
+            update_file_hash = str.encode(hashlib.sha512(file_data).hexdigest())
 
         #print("Hash generated.")
 
-        print(f"Generated {HASHING_ALGORITHM} hash: {update_file_hash}")
+        # print(f"Generated {HASHING_ALGORITHM} hash: {update_file_hash}")
 
         return update_file_hash, SUCCESS
     
@@ -97,7 +103,7 @@ def generate_signature(payload: bytes, private_key_bytes: bytes) -> typing.Tuple
             private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
             signature = private_key.sign(payload)
 
-        print(f"Generated signature: {signature}")
+        # print(f"Generated signature: {signature}")
 
         # print("Signature generated.")
         payload += signature
@@ -128,11 +134,18 @@ def verify_hash(payload: bytes, file_name_length: int, payload_length: int) -> t
         update_file_hash = (payload[payload_length - HASH_SIZE - signature_size:payload_length - signature_size]).decode()
 
         if HASHING_ALGORITHM == 'sha-256': # SHA-256
-            #print("Using SHA-256 hashing algorithm.")
+            print("Using SHA-256 hashing algorithm.")
             generated_hash = hashlib.sha256(data_inb).hexdigest() # Verify hash of the update file
+        elif HASHING_ALGORITHM == 'sha-384':
+            print("Using SHA-384 hashing algorithm.")
+            generated_hash = hashlib.sha384(data_inb).hexdigest()
+        elif HASHING_ALGORITHM == 'sha-512':
+            print("Using SHA-512 hashing algorithm.")
+            generated_hash = hashlib.sha512(data_inb).hexdigest()
+        
 
-        print(f"Hash received: {update_file_hash}")
-        print(f"Hash generated: {generated_hash}")
+        # print(f"Hash received: {update_file_hash}")
+        # print(f"Hash generated: {generated_hash}")
 
         if update_file_hash != generated_hash:
             #print("Hash mismatch. Payload not valid.")
