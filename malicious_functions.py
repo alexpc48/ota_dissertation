@@ -331,7 +331,7 @@ def use_invalid_signature(selector: selectors.SelectSelector) -> int:
 
         payload = header + nonce + tag + str.encode(identifier) + encrypted_payload
 
-        print("Payload created successfully with an invalid hash.")
+        print("Payload created successfully with an invalid signature.")
 
         print(f"Sending data to {client_host}:{client_port}")
         while payload:
