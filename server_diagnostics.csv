@@ -1,0 +1,695 @@
+Accepting connection Diagnostics Log,,
+Date and Time: 07-05-2025 17:05:20,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.111306200,sec
+CPU time (user):,0.109375000,sec
+CPU time (system):,0.062500000,sec
+Total CPU time:,0.171875000,sec
+Effective CPU cores used:,1.54,x
+CPU usage during operation:,137.50,%
+Memory change (RSS):,1323008,bytes
+Memory change (USS):,241664,bytes
+Python memory allocated:,3605,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000223700,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,212992,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,2336,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.892147200,sec
+CPU time (user):,0.796875000,sec
+CPU time (system):,0.093750000,sec
+Total CPU time:,0.890625000,sec
+Effective CPU cores used:,1.00,x
+CPU usage during operation:,100.00,%
+Memory change (RSS):,581632,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1264,bytes
+
+Total time for security operations:,1.003677100,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 07-05-2025 17:05:21,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.005131100,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,97.70,%
+Memory change (RSS):,147456,bytes
+Memory change (USS):,65536,bytes
+Python memory allocated:,20268,bytes
+
+Total time for security operations:,0.005131100,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 07-05-2025 17:05:21,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.001525000,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,82128,bytes
+
+generate_hash Diagnostics,,
+Time:,0.008166900,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1169,bytes
+
+generate_signature Diagnostics,,
+Time:,0.179112000,sec
+CPU time (user):,0.140625000,sec
+CPU time (system):,0.046875000,sec
+Total CPU time:,0.187500000,sec
+Effective CPU cores used:,1.05,x
+CPU usage during operation:,108.00,%
+Memory change (RSS):,2170880,bytes
+Memory change (USS):,1294336,bytes
+Python memory allocated:,745962,bytes
+
+Total time for security operations:,0.188803900,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 07-05-2025 17:05:22,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.000994800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,11086,bytes
+
+Total time for security operations:,0.000994800,sec
+End of diagnostics Log,,
+
+
+
+Creating Connection Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:22,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.055753800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.031250000,sec
+Total CPU time:,0.031250000,sec
+Effective CPU cores used:,0.56,x
+CPU usage during operation:,49.60,%
+Memory change (RSS):,2191360,bytes
+Memory change (USS):,1146880,bytes
+Python memory allocated:,3245,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.048576700,sec
+CPU time (user):,0.046875000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.046875000,sec
+Effective CPU cores used:,0.96,x
+CPU usage during operation:,75.60,%
+Memory change (RSS):,2813952,bytes
+Memory change (USS):,2584576,bytes
+Python memory allocated:,119674,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.001142200,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,131072,bytes
+Memory change (USS):,73728,bytes
+Python memory allocated:,1288,bytes
+
+Total time for security operations:,0.105472700,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:22,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.002934800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,516096,bytes
+Memory change (USS):,495616,bytes
+Python memory allocated:,14774,bytes
+
+Total time for security operations:,0.002934800,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:22,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.001305900,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,73728,bytes
+Memory change (USS):,73728,bytes
+Python memory allocated:,14182,bytes
+
+Total time for security operations:,0.001305900,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:23,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.000686800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,8192,bytes
+Memory change (USS):,8192,bytes
+Python memory allocated:,8501,bytes
+
+Total time for security operations:,0.000686800,sec
+End of diagnostics Log,,
+
+
+
+Creating Connection Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:30,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.016683000,sec
+CPU time (user):,0.015625000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.031250000,sec
+Effective CPU cores used:,1.87,x
+CPU usage during operation:,100.80,%
+Memory change (RSS):,8192,bytes
+Memory change (USS):,8192,bytes
+Python memory allocated:,1521,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000155900,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,2085,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.000270800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,992,bytes
+
+Total time for security operations:,0.017109700,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:31,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.001031700,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,106496,bytes
+Memory change (USS):,12288,bytes
+Python memory allocated:,8165,bytes
+
+Total time for security operations:,0.001031700,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:31,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.000944400,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,20480,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,11333,bytes
+
+Total time for security operations:,0.000944400,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:40:31,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.000852600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,8101,bytes
+
+Total time for security operations:,0.000852600,sec
+End of diagnostics Log,,
+
+
+
+Creating Connection Diagnostics Log,,
+Date and Time: 08-05-2025 02:41:40,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.019385200,sec
+CPU time (user):,0.015625000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.015625000,sec
+Effective CPU cores used:,0.81,x
+CPU usage during operation:,50.40,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,1174,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000194700,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,104.20,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1668,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.000640100,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.015625000,sec
+Effective CPU cores used:,24.41,x
+CPU usage during operation:,97.70,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,833,bytes
+
+Total time for security operations:,0.020220000,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:41:40,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.000857600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,104.20,%
+Memory change (RSS):,8192,bytes
+Memory change (USS):,8192,bytes
+Python memory allocated:,7246,bytes
+
+Total time for security operations:,0.000857600,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:41:41,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.000751600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,10014,bytes
+
+Total time for security operations:,0.000751600,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 02:41:41,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.000514000,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,7165,bytes
+
+Total time for security operations:,0.000514000,sec
+End of diagnostics Log,,
+
+
+
+Accepting connection Diagnostics Log,,
+Date and Time: 08-05-2025 07:50:21,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.069268400,sec
+CPU time (user):,0.078125000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.093750000,sec
+Effective CPU cores used:,1.35,x
+CPU usage during operation:,151.20,%
+Memory change (RSS):,1277952,bytes
+Memory change (USS):,217088,bytes
+Python memory allocated:,3677,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000207600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.015625000,sec
+Effective CPU cores used:,75.26,x
+CPU usage during operation:,104.20,%
+Memory change (RSS):,176128,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,2408,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.941445800,sec
+CPU time (user):,0.828125000,sec
+CPU time (system):,0.250000000,sec
+Total CPU time:,1.078125000,sec
+Effective CPU cores used:,1.15,x
+CPU usage during operation:,115.10,%
+Memory change (RSS):,557056,bytes
+Memory change (USS):,36864,bytes
+Python memory allocated:,1138,bytes
+
+Total time for security operations:,1.010921800,sec
+End of diagnostics Log,,
+
+
+
+Accepting connection Diagnostics Log,,
+Date and Time: 08-05-2025 07:58:10,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.087064500,sec
+CPU time (user):,0.062500000,sec
+CPU time (system):,0.031250000,sec
+Total CPU time:,0.093750000,sec
+Effective CPU cores used:,1.08,x
+CPU usage during operation:,99.70,%
+Memory change (RSS):,1290240,bytes
+Memory change (USS):,270336,bytes
+Python memory allocated:,3605,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000222600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,212992,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,2336,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.931037600,sec
+CPU time (user):,0.875000000,sec
+CPU time (system):,0.078125000,sec
+Total CPU time:,0.953125000,sec
+Effective CPU cores used:,1.02,x
+CPU usage during operation:,101.60,%
+Memory change (RSS):,577536,bytes
+Memory change (USS):,86016,bytes
+Python memory allocated:,1264,bytes
+
+Total time for security operations:,1.018324700,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 07:58:14,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.002193300,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,147456,bytes
+Memory change (USS):,65536,bytes
+Python memory allocated:,20220,bytes
+
+Total time for security operations:,0.002193300,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 07:58:14,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.001217000,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,4096,bytes
+Memory change (USS):,8192,bytes
+Python memory allocated:,82220,bytes
+
+generate_hash Diagnostics,,
+Time:,0.001009400,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,135168,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1169,bytes
+
+generate_signature Diagnostics,,
+Time:,0.088709700,sec
+CPU time (user):,0.062500000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.078125000,sec
+Effective CPU cores used:,0.88,x
+CPU usage during operation:,100.80,%
+Memory change (RSS):,2154496,bytes
+Memory change (USS):,1409024,bytes
+Python memory allocated:,745974,bytes
+
+Total time for security operations:,0.090936100,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 07:58:14,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.001194100,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,11027,bytes
+
+Total time for security operations:,0.001194100,sec
+End of diagnostics Log,,
+
+
+
+Accepting connection Diagnostics Log,,
+Date and Time: 08-05-2025 08:01:30,,
+Operation Diagnostics,,
+create_context Diagnostics,,
+Time:,0.062051900,sec
+CPU time (user):,0.046875000,sec
+CPU time (system):,0.046875000,sec
+Total CPU time:,0.093750000,sec
+Effective CPU cores used:,1.51,x
+CPU usage during operation:,148.80,%
+Memory change (RSS):,1310720,bytes
+Memory change (USS):,266240,bytes
+Python memory allocated:,3653,bytes
+
+wrap_socket Diagnostics,,
+Time:,0.000249100,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,188416,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,2336,bytes
+
+wait_for_TLS_handshake Diagnostics,,
+Time:,0.968181000,sec
+CPU time (user):,0.906250000,sec
+CPU time (system):,0.062500000,sec
+Total CPU time:,0.968750000,sec
+Effective CPU cores used:,1.00,x
+CPU usage during operation:,100.00,%
+Memory change (RSS):,581632,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1264,bytes
+
+Total time for security operations:,1.030482000,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 08:01:31,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.001764600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,118784,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,20220,bytes
+
+Total time for security operations:,0.001764600,sec
+End of diagnostics Log,,
+
+
+
+Creating Payload Diagnostics Log,,
+Date and Time: 08-05-2025 08:01:32,,
+Operation Diagnostics,,
+payload_encryption Diagnostics,,
+Time:,0.001561800,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.015625000,sec
+Total CPU time:,0.015625000,sec
+Effective CPU cores used:,10.00,x
+CPU usage during operation:,97.70,%
+Memory change (RSS):,36864,bytes
+Memory change (USS):,4096,bytes
+Python memory allocated:,82284,bytes
+
+generate_hash Diagnostics,,
+Time:,0.000393600,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,139264,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,1233,bytes
+
+generate_signature Diagnostics,,
+Time:,0.056593100,sec
+CPU time (user):,0.046875000,sec
+CPU time (system):,0.046875000,sec
+Total CPU time:,0.093750000,sec
+Effective CPU cores used:,1.66,x
+CPU usage during operation:,148.80,%
+Memory change (RSS):,2215936,bytes
+Memory change (USS):,1470464,bytes
+Python memory allocated:,746233,bytes
+
+Total time for security operations:,0.058548500,sec
+End of diagnostics Log,,
+
+
+
+Receiving Payload Diagnostics Log,,
+Date and Time: 08-05-2025 08:01:32,,
+Operation Diagnostics,,
+payload_decryption Diagnostics,,
+Time:,0.001201000,sec
+CPU time (user):,0.000000000,sec
+CPU time (system):,0.000000000,sec
+Total CPU time:,0.000000000,sec
+Effective CPU cores used:,0.00,x
+CPU usage during operation:,0.00,%
+Memory change (RSS):,0,bytes
+Memory change (USS):,0,bytes
+Python memory allocated:,10978,bytes
+
+Total time for security operations:,0.001201000,sec
+End of diagnostics Log,,
+
+
+
