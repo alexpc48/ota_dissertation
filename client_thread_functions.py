@@ -69,7 +69,7 @@ def menu_thread(selector: selectors.SelectSelector, response_event: threading.Ev
                         print("Error: There is no update queued for install.")
                         pass
                     elif ret_val == UPDATE_INSTALL_ERROR:
-                        print("Error: There was an error installing the udpate.")
+                        print("Error: There was an error installing the update.")
                         pass
                     else:
                         print("An error occurred while installing the update.")

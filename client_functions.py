@@ -222,12 +222,12 @@ def check_update_in_downloads_buffer() -> int:
         cursor = db_connection.cursor()
         
         result = (cursor.execute("SELECT EXISTS (SELECT 1 FROM update_downloads)")).fetchone()
+        db_connection.close()
         if result[0]:
             # #print("An update is already queued for install.")
             # #print("Please install the update before downloading a new one.")
-            db_connection.close()
             return QUEUED_UPDATE_ERROR
-
+    
         return SUCCESS
     
     except Exception as e:
@@ -341,7 +341,7 @@ def install_update(selector: selectors.SelectSelector, response_event: threading
 
         # Check if there is an update queued for download
         ret_val = check_update_in_downloads_buffer()
-        if ret_val == ERROR:
+        if ret_val == SUCCESS:
             #print("There is no update queued for install.")
             #print("Please download an update before installing.")
             return UPDATE_NOT_AVALIABLE_ERROR
